@@ -1,4 +1,4 @@
--- [[ HARD LOCK (HEAD/BODY TOGGLE) + DEAD CHECK + WALL CHECK + ESP ]] --
+-- [[ HARD LOCK & ESP WITH FLOATING BUTTONS + DYNAMIC RESPAWN DETECT ]] --
 
 if getgenv().AutoLockCleanup then
     pcall(getgenv().AutoLockCleanup)
@@ -19,6 +19,7 @@ local ESPEnabled = true
 local ShowFOV = true
 local FOVRadius = 120
 local ESPHighlights = {}
+local PlayerConnections = {}
 
 -- Raycast Setup (Wall Check)
 local raycastParams = RaycastParams.new()
@@ -27,7 +28,7 @@ raycastParams.IgnoreWater = true
 
 -- ScreenGui Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "HardLockCompactUI"
+ScreenGui.Name = "FloatingAutoLockUI"
 ScreenGui.ResetOnSpawn = false
 
 if gethui then
@@ -60,7 +61,96 @@ FOVStroke.Color = Color3.fromRGB(137, 180, 250)
 FOVStroke.Transparency = 0.2
 FOVStroke.Parent = FOVCircle
 
--- ==================== COMPACT UI ====================
+-- Helper Function: Make Elements Draggable
+local function MakeDraggable(frame, handle)
+    handle = handle or frame
+    local dragging, dragInput, dragStart, startPos
+
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    handle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            TweenService:Create(frame, TweenInfo.new(0.06), {
+                Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            }):Play()
+        end
+    end)
+end
+
+-- ==================== FLOATING QUICK BUTTONS ====================
+local FloatingContainer = Instance.new("Frame")
+FloatingContainer.Name = "FloatingContainer"
+FloatingContainer.Size = UDim2.new(0, 110, 0, 50)
+FloatingContainer.Position = UDim2.new(0.85, 0, 0.2, 0)
+FloatingContainer.BackgroundTransparency = 1
+FloatingContainer.Parent = ScreenGui
+
+-- Floating Lock Button
+local FloatLockBtn = Instance.new("TextButton")
+FloatLockBtn.Name = "FloatLockBtn"
+FloatLockBtn.Size = UDim2.new(0, 48, 0, 48)
+FloatLockBtn.Position = UDim2.new(0, 0, 0, 0)
+FloatLockBtn.BackgroundColor3 = Color3.fromRGB(243, 139, 168)
+FloatLockBtn.Text = "🎯\nOFF"
+FloatLockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FloatLockBtn.Font = Enum.Font.GothamBold
+FloatLockBtn.TextSize = 10
+FloatLockBtn.Parent = FloatingContainer
+
+local FloatLockCorner = Instance.new("UICorner")
+FloatLockCorner.CornerRadius = UDim.new(1, 0)
+FloatLockCorner.Parent = FloatLockBtn
+
+local FloatLockStroke = Instance.new("UIStroke")
+FloatLockStroke.Thickness = 2
+FloatLockStroke.Color = Color3.fromRGB(30, 30, 46)
+FloatLockStroke.Parent = FloatLockBtn
+
+-- Floating ESP Button
+local FloatESPBtn = Instance.new("TextButton")
+FloatESPBtn.Name = "FloatESPBtn"
+FloatESPBtn.Size = UDim2.new(0, 48, 0, 48)
+FloatESPBtn.Position = UDim2.new(0, 56, 0, 0)
+FloatESPBtn.BackgroundColor3 = Color3.fromRGB(166, 227, 161)
+FloatESPBtn.Text = "👁️\nON"
+FloatESPBtn.TextColor3 = Color3.fromRGB(30, 30, 46)
+FloatESPBtn.Font = Enum.Font.GothamBold
+FloatESPBtn.TextSize = 10
+FloatESPBtn.Parent = FloatingContainer
+
+local FloatESPCorner = Instance.new("UICorner")
+FloatESPCorner.CornerRadius = UDim.new(1, 0)
+FloatESPCorner.Parent = FloatESPBtn
+
+local FloatESPStroke = Instance.new("UIStroke")
+FloatESPStroke.Thickness = 2
+FloatESPStroke.Color = Color3.fromRGB(30, 30, 46)
+FloatESPStroke.Parent = FloatESPBtn
+
+MakeDraggable(FloatingContainer, FloatingContainer)
+MakeDraggable(FloatingContainer, FloatLockBtn)
+MakeDraggable(FloatingContainer, FloatESPBtn)
+
+-- ==================== MAIN PANEL UI ====================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 220, 0, 280)
@@ -94,7 +184,7 @@ TopBarCorner.Parent = TopBar
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -60, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "AUTO LOCK V2"
+Title.Text = "AUTO LOCK V3"
 Title.TextColor3 = Color3.fromRGB(205, 214, 244)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 11
@@ -132,6 +222,8 @@ local DelCorner = Instance.new("UICorner")
 DelCorner.CornerRadius = UDim.new(0, 4)
 DelCorner.Parent = DeleteBtn
 
+MakeDraggable(MainFrame, TopBar)
+
 -- Content Container
 local Content = Instance.new("Frame")
 Content.Name = "Content"
@@ -140,7 +232,7 @@ Content.Position = UDim2.new(0, 8, 0, 36)
 Content.BackgroundTransparency = 1
 Content.Parent = MainFrame
 
--- 1. Auto Lock Toggle
+-- 1. Auto Lock Toggle Panel Button
 local LockToggle = Instance.new("TextButton")
 LockToggle.Size = UDim2.new(1, 0, 0, 30)
 LockToggle.Position = UDim2.new(0, 0, 0, 0)
@@ -185,7 +277,7 @@ local ModeCorner = Instance.new("UICorner")
 ModeCorner.CornerRadius = UDim.new(0, 6)
 ModeCorner.Parent = ModeToggle
 
--- 4. ESP Toggle
+-- 4. ESP Toggle Panel Button
 local ESPToggle = Instance.new("TextButton")
 ESPToggle.Size = UDim2.new(1, 0, 0, 30)
 ESPToggle.Position = UDim2.new(0, 0, 0, 102)
@@ -295,56 +387,38 @@ for i, col in ipairs(palette) do
     end)
 end
 
--- ==================== INTERACTION LOGIC ====================
+-- ==================== STATE UPDATE FUNCTIONS ====================
 
--- Draggable UI
-local dragging, dragInput, dragStart, startPos
-TopBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-TopBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        TweenService:Create(MainFrame, TweenInfo.new(0.08), {
-            Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        }):Play()
-    end
-end)
-
--- Minimize
-local minimized = false
-MinimizeBtn.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    Content.Visible = not minimized
-    TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = minimized and UDim2.new(0, 220, 0, 32) or UDim2.new(0, 220, 0, 280)
-    }):Play()
-    MinimizeBtn.Text = minimized and "+" or "-"
-end)
-
--- Toggles
-LockToggle.MouseButton1Click:Connect(function()
-    AutoLockEnabled = not AutoLockEnabled
+local function UpdateLockState(state)
+    AutoLockEnabled = state
     LockToggle.Text = AutoLockEnabled and "Auto Lock: ON" or "Auto Lock: OFF"
     LockToggle.TextColor3 = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-end)
+    
+    FloatLockBtn.BackgroundColor3 = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
+    FloatLockBtn.TextColor3 = AutoLockEnabled and Color3.fromRGB(30, 30, 46) or Color3.fromRGB(255, 255, 255)
+    FloatLockBtn.Text = AutoLockEnabled and "🎯\nON" or "🎯\nOFF"
+end
+
+local function UpdateESPState(state)
+    ESPEnabled = state
+    ESPToggle.Text = ESPEnabled and "ESP Body: ON" or "ESP Body: OFF"
+    ESPToggle.TextColor3 = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
+    
+    FloatESPBtn.BackgroundColor3 = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
+    FloatESPBtn.TextColor3 = ESPEnabled and Color3.fromRGB(30, 30, 46) or Color3.fromRGB(255, 255, 255)
+    FloatESPBtn.Text = ESPEnabled and "👁️\nON" or "👁️\nOFF"
+end
+
+-- Sync Initial State
+UpdateLockState(AutoLockEnabled)
+UpdateESPState(ESPEnabled)
+
+-- Button Connections
+LockToggle.MouseButton1Click:Connect(function() UpdateLockState(not AutoLockEnabled) end)
+FloatLockBtn.MouseButton1Click:Connect(function() UpdateLockState(not AutoLockEnabled) end)
+
+ESPToggle.MouseButton1Click:Connect(function() UpdateESPState(not ESPEnabled) end)
+FloatESPBtn.MouseButton1Click:Connect(function() UpdateESPState(not ESPEnabled) end)
 
 TargetToggle.MouseButton1Click:Connect(function()
     LockHead = not LockHead
@@ -356,12 +430,6 @@ ModeToggle.MouseButton1Click:Connect(function()
     InstantLock = not InstantLock
     ModeToggle.Text = InstantLock and "Mode Lock: HARD (INSTANT)" or "Mode Lock: SMOOTH"
     ModeToggle.TextColor3 = InstantLock and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(249, 226, 175)
-end)
-
-ESPToggle.MouseButton1Click:Connect(function()
-    ESPEnabled = not ESPEnabled
-    ESPToggle.Text = ESPEnabled and "ESP Body: ON" or "ESP Body: OFF"
-    ESPToggle.TextColor3 = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
 end)
 
 FOVPlus.MouseButton1Click:Connect(function()
@@ -381,14 +449,33 @@ FOVVisToggle.MouseButton1Click:Connect(function()
     FOVVisToggle.TextColor3 = ShowFOV and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
 end)
 
+-- Minimize Panel
+local minimized = false
+MinimizeBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    Content.Visible = not minimized
+    TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = minimized and UDim2.new(0, 220, 0, 32) or UDim2.new(0, 220, 0, 280)
+    }):Play()
+    MinimizeBtn.Text = minimized and "+" or "-"
+end)
+
 -- Cleanup Handler
 local renderConnection = nil
 local function Cleanup()
     if renderConnection then renderConnection:Disconnect() end
+    for _, conns in pairs(PlayerConnections) do
+        for _, conn in ipairs(conns) do
+            if conn then conn:Disconnect() end
+        end
+    end
+    table.clear(PlayerConnections)
+
     for _, hl in pairs(ESPHighlights) do
         if hl then hl:Destroy() end
     end
     table.clear(ESPHighlights)
+
     if ScreenGui then ScreenGui:Destroy() end
 end
 
@@ -420,11 +507,10 @@ local function GetClosestTargetInCenterFOV()
             local char = player.Character
             local humanoid = char:FindFirstChildOfClass("Humanoid")
 
-            -- FILTER MATI: Harus dipastikan Humanoid ada dan Health > 0
+            -- Cek Status Hidup Real-Time
             if humanoid and humanoid.Health > 0 and char:IsDescendantOf(workspace) then
                 local targetPart = nil
                 
-                -- Pilih part berdasarkan toggle (Kepala vs Badan)
                 if LockHead then
                     targetPart = char:FindFirstChild("Head")
                 else
@@ -450,61 +536,91 @@ local function GetClosestTargetInCenterFOV()
     return closestTarget
 end
 
--- ==================== ESP SYSTEM ====================
+-- ==================== DYNAMIC EVENT-DRIVEN ESP SYSTEM ====================
 
-local function UpdateESP()
-    if not ESPEnabled then
-        for plr, hl in pairs(ESPHighlights) do
-            if hl then hl:Destroy() end
-        end
-        table.clear(ESPHighlights)
-        return
-    end
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local char = player.Character
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-
-            -- HANYA TAMPILKAN ESP PADA PLAYER YANG MASIH HIDUP
-            if humanoid and humanoid.Health > 0 then
-                if not ESPHighlights[player] or not ESPHighlights[player].Parent then
-                    local hl = Instance.new("Highlight")
-                    hl.Name = "AestheticBodyESP"
-                    hl.FillColor = Color3.fromRGB(203, 166, 247)
-                    hl.FillTransparency = 0.65
-                    hl.OutlineColor = Color3.fromRGB(137, 180, 250)
-                    hl.OutlineTransparency = 0.1
-                    hl.Adornee = char
-                    hl.Parent = char
-                    ESPHighlights[player] = hl
-                end
-            else
-                if ESPHighlights[player] then
-                    ESPHighlights[player]:Destroy()
-                    ESPHighlights[player] = nil
-                end
-            end
-        else
-            if ESPHighlights[player] then
-                ESPHighlights[player]:Destroy()
-                ESPHighlights[player] = nil
-            end
-        end
+local function RemoveESP(player)
+    if ESPHighlights[player] then
+        ESPHighlights[player]:Destroy()
+        ESPHighlights[player] = nil
     end
 end
+
+local function ApplyHighlight(player, character)
+    if player == LocalPlayer then return end
+    RemoveESP(player)
+
+    if not ESPEnabled then return end
+
+    local humanoid = character:WaitForChild("Humanoid", 3)
+    if humanoid and humanoid.Health > 0 then
+        local hl = Instance.new("Highlight")
+        hl.Name = "DynamicESP"
+        hl.FillColor = Color3.fromRGB(203, 166, 247)
+        hl.FillTransparency = 0.65
+        hl.OutlineColor = Color3.fromRGB(137, 180, 250)
+        hl.OutlineTransparency = 0.1
+        hl.Adornee = character
+        hl.Parent = character
+        ESPHighlights[player] = hl
+
+        -- Event saat player mati saat bermain
+        local diedConn
+        diedConn = humanoid.Died:Connect(function()
+            RemoveESP(player)
+            if diedConn then diedConn:Disconnect() end
+        end)
+    end
+end
+
+local function TrackPlayer(player)
+    if player == LocalPlayer then return end
+    PlayerConnections[player] = {}
+
+    -- Handle Karakter Saat Ini
+    if player.Character then
+        task.spawn(ApplyHighlight, player, player.Character)
+    end
+
+    -- Handle Respawn Player
+    local charAddedConn = player.CharacterAdded:Connect(function(newChar)
+        task.spawn(ApplyHighlight, player, newChar)
+    end)
+
+    table.insert(PlayerConnections[player], charAddedConn)
+end
+
+-- Deteksi Player Baru Join & Player yang Ada Sekarang
+for _, player in ipairs(Players:GetPlayers()) do
+    TrackPlayer(player)
+end
+
+Players.PlayerAdded:Connect(TrackPlayer)
+
+Players.PlayerRemoving:Connect(function(player)
+    RemoveESP(player)
+    if PlayerConnections[player] then
+        for _, conn in ipairs(PlayerConnections[player]) do
+            if conn then conn:Disconnect() end
+        end
+        PlayerConnections[player] = nil
+    end
+end)
 
 -- ==================== MAIN LOOP ====================
 
 renderConnection = RunService.RenderStepped:Connect(function()
     FOVCircle.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
 
-    UpdateESP()
+    -- Sembunyikan/Tampilkan Semua Highlight ESP Sesuai State
+    for player, hl in pairs(ESPHighlights) do
+        if hl and hl.Parent then
+            hl.Enabled = ESPEnabled
+        end
+    end
 
+    -- Eksekusi Auto Lock
     if AutoLockEnabled then
         local targetPart = GetClosestTargetInCenterFOV()
-        
-        -- Lock hanya akan aktif jika ada target hidup yang terdeteksi
         if targetPart then
             local currentCF = Camera.CFrame
             local targetCF = CFrame.new(currentCF.Position, targetPart.Position)
