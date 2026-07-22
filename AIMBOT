@@ -1,4 +1,4 @@
--- [[ AUTO LOCK CENTER FOV + WALL CHECK + ESP + COMPACT UI ]] --
+-- [[ HARD LOCK AUTO AIM + WALL CHECK + ESP + COMPACT UI ]] --
 
 if getgenv().AutoLockCleanup then
     pcall(getgenv().AutoLockCleanup)
@@ -11,12 +11,12 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Configuration Variables
+-- Configuration
 local AutoLockEnabled = false
+local InstantLock = true -- Set true agar kunci 100% presisi tanpa delay
 local ESPEnabled = true
 local ShowFOV = true
-local FOVRadius = 100
-local LockSmoothness = 0.2
+local FOVRadius = 120
 local ESPHighlights = {}
 
 -- Raycast Setup (Wall Check)
@@ -26,7 +26,7 @@ raycastParams.IgnoreWater = true
 
 -- ScreenGui Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AutoLockCompactUI"
+ScreenGui.Name = "HardLockCompactUI"
 ScreenGui.ResetOnSpawn = false
 
 if gethui then
@@ -39,11 +39,11 @@ else
     if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 end
 
--- ==================== FOV CIRCLE (CENTER OF SCREEN) ====================
+-- ==================== FOV CIRCLE ====================
 local FOVCircle = Instance.new("Frame")
 FOVCircle.Name = "FOVCircle"
 FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
-FOVCircle.Position = UDim2.new(0.5, 0, 0.5, 0) -- Pas di tengah layar
+FOVCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
 FOVCircle.BackgroundTransparency = 1
 FOVCircle.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
 FOVCircle.Visible = ShowFOV
@@ -59,10 +59,10 @@ FOVStroke.Color = Color3.fromRGB(137, 180, 250)
 FOVStroke.Transparency = 0.2
 FOVStroke.Parent = FOVCircle
 
--- ==================== COMPACT MAIN UI ====================
+-- ==================== COMPACT UI ====================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 210) -- Ukuran jauh lebih kecil
+MainFrame.Size = UDim2.new(0, 220, 0, 245)
 MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 37)
 MainFrame.BorderSizePixel = 0
@@ -78,7 +78,7 @@ MainStroke.Thickness = 1
 MainStroke.Color = Color3.fromRGB(69, 71, 90)
 MainStroke.Parent = MainFrame
 
--- Top Bar Header
+-- Top Bar
 local TopBar = Instance.new("Frame")
 TopBar.Name = "TopBar"
 TopBar.Size = UDim2.new(1, 0, 0, 32)
@@ -93,7 +93,7 @@ TopBarCorner.Parent = TopBar
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -60, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "AUTO LOCK (CENTER)"
+Title.Text = "HARD LOCK BODY"
 Title.TextColor3 = Color3.fromRGB(205, 214, 244)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 11
@@ -154,10 +154,25 @@ local LockCorner = Instance.new("UICorner")
 LockCorner.CornerRadius = UDim.new(0, 6)
 LockCorner.Parent = LockToggle
 
--- 2. ESP Toggle
+-- 2. Lock Mode Toggle (Instant vs Smooth)
+local ModeToggle = Instance.new("TextButton")
+ModeToggle.Size = UDim2.new(1, 0, 0, 30)
+ModeToggle.Position = UDim2.new(0, 0, 0, 34)
+ModeToggle.Text = "Mode Lock: HARD (INSTANT)"
+ModeToggle.TextColor3 = Color3.fromRGB(166, 227, 161)
+ModeToggle.Font = Enum.Font.GothamBold
+ModeToggle.TextSize = 10
+ModeToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
+ModeToggle.Parent = Content
+
+local ModeCorner = Instance.new("UICorner")
+ModeCorner.CornerRadius = UDim.new(0, 6)
+ModeCorner.Parent = ModeToggle
+
+-- 3. ESP Toggle
 local ESPToggle = Instance.new("TextButton")
 ESPToggle.Size = UDim2.new(1, 0, 0, 30)
-ESPToggle.Position = UDim2.new(0, 0, 0, 34)
+ESPToggle.Position = UDim2.new(0, 0, 0, 68)
 ESPToggle.Text = "ESP Body: ON"
 ESPToggle.TextColor3 = Color3.fromRGB(166, 227, 161)
 ESPToggle.Font = Enum.Font.GothamBold
@@ -169,10 +184,10 @@ local ESPCorner = Instance.new("UICorner")
 ESPCorner.CornerRadius = UDim.new(0, 6)
 ESPCorner.Parent = ESPToggle
 
--- 3. FOV Adjuster
+-- 4. FOV Adjuster
 local FOVFrame = Instance.new("Frame")
 FOVFrame.Size = UDim2.new(1, 0, 0, 30)
-FOVFrame.Position = UDim2.new(0, 0, 0, 68)
+FOVFrame.Position = UDim2.new(0, 0, 0, 102)
 FOVFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
 FOVFrame.Parent = Content
 
@@ -217,10 +232,10 @@ local FOVMinusCorner = Instance.new("UICorner")
 FOVMinusCorner.CornerRadius = UDim.new(0, 4)
 FOVMinusCorner.Parent = FOVMinus
 
--- 4. FOV Visibility Toggle
+-- 5. FOV Visibility Toggle
 local FOVVisToggle = Instance.new("TextButton")
 FOVVisToggle.Size = UDim2.new(1, 0, 0, 30)
-FOVVisToggle.Position = UDim2.new(0, 0, 0, 102)
+FOVVisToggle.Position = UDim2.new(0, 0, 0, 136)
 FOVVisToggle.Text = "Lingkaran: TAMPIL"
 FOVVisToggle.TextColor3 = Color3.fromRGB(166, 227, 161)
 FOVVisToggle.Font = Enum.Font.GothamMedium
@@ -232,19 +247,19 @@ local FOVVisCorner = Instance.new("UICorner")
 FOVVisCorner.CornerRadius = UDim.new(0, 6)
 FOVVisCorner.Parent = FOVVisToggle
 
--- 5. Color Customization
+-- 6. Color Customization
 local ColorFrame = Instance.new("Frame")
 ColorFrame.Size = UDim2.new(1, 0, 0, 24)
-ColorFrame.Position = UDim2.new(0, 0, 0, 136)
+ColorFrame.Position = UDim2.new(0, 0, 0, 172)
 ColorFrame.BackgroundTransparency = 1
 ColorFrame.Parent = Content
 
 local palette = {
-    Color3.fromRGB(137, 180, 250), -- Biru
-    Color3.fromRGB(243, 139, 168), -- Merah
-    Color3.fromRGB(166, 227, 161), -- Hijau
-    Color3.fromRGB(249, 226, 175), -- Kuning
-    Color3.fromRGB(203, 166, 247)  -- Ungu
+    Color3.fromRGB(137, 180, 250),
+    Color3.fromRGB(243, 139, 168),
+    Color3.fromRGB(166, 227, 161),
+    Color3.fromRGB(249, 226, 175),
+    Color3.fromRGB(203, 166, 247)
 }
 
 for i, col in ipairs(palette) do
@@ -303,16 +318,22 @@ MinimizeBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
     Content.Visible = not minimized
     TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = minimized and UDim2.new(0, 220, 0, 32) or UDim2.new(0, 220, 0, 210)
+        Size = minimized and UDim2.new(0, 220, 0, 32) or UDim2.new(0, 220, 0, 245)
     }):Play()
     MinimizeBtn.Text = minimized and "+" or "-"
 end)
 
--- Toggles
+-- Controls
 LockToggle.MouseButton1Click:Connect(function()
     AutoLockEnabled = not AutoLockEnabled
     LockToggle.Text = AutoLockEnabled and "Auto Lock: ON" or "Auto Lock: OFF"
     LockToggle.TextColor3 = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
+end)
+
+ModeToggle.MouseButton1Click:Connect(function()
+    InstantLock = not InstantLock
+    ModeToggle.Text = InstantLock and "Mode Lock: HARD (INSTANT)" or "Mode Lock: SMOOTH"
+    ModeToggle.TextColor3 = InstantLock and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(249, 226, 175)
 end)
 
 ESPToggle.MouseButton1Click:Connect(function()
@@ -367,7 +388,6 @@ local function IsVisible(targetPart, targetCharacter)
     return true
 end
 
--- Mencari target terdekat dari TENGAH LAYAR
 local function GetClosestTargetInCenterFOV()
     local closestTarget = nil
     local shortestDistance = FOVRadius
@@ -376,17 +396,15 @@ local function GetClosestTargetInCenterFOV()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local char = player.Character
-            local targetPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+            -- Memprioritaskan UpperTorso / Torso untuk hit kencang pada badan
+            local targetPart = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
             local humanoid = char:FindFirstChildOfClass("Humanoid")
 
-            -- Validasi Player Masih Hidup
             if targetPart and humanoid and humanoid.Health > 0 then
                 local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
                 
                 if onScreen then
-                    -- Jarak dihitung dari TENGAH LAYAR
                     local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                    
                     if distance <= shortestDistance then
                         if IsVisible(targetPart, char) then
                             shortestDistance = distance
@@ -446,19 +464,23 @@ end
 -- ==================== MAIN LOOP ====================
 
 renderConnection = RunService.RenderStepped:Connect(function()
-    -- Update Ukuran Lingkaran FOV di Tengah Layar
     FOVCircle.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
 
-    -- Update ESP
     UpdateESP()
 
-    -- Execution Auto Lock
     if AutoLockEnabled then
         local targetPart = GetClosestTargetInCenterFOV()
         if targetPart then
             local currentCF = Camera.CFrame
             local targetCF = CFrame.new(currentCF.Position, targetPart.Position)
-            Camera.CFrame = currentCF:Lerp(targetCF, LockSmoothness)
+            
+            if InstantLock then
+                -- Hard Lock tanpa lerp (langsung mengunci 100% presisi)
+                Camera.CFrame = targetCF
+            else
+                -- Smooth Lock (pergerakan kamera halus)
+                Camera.CFrame = currentCF:Lerp(targetCF, 0.25)
+            end
         end
     end
 end)
