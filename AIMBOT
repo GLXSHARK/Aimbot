@@ -1,7 +1,5 @@
--- [[ AUTO LOCK BODY + WALL CHECK + ESP BODY + UI ESTETIK ]] --
--- Compatible dengan semua Executor (Mobile & PC)
+-- [[ AUTO LOCK CENTER FOV + WALL CHECK + ESP + COMPACT UI ]] --
 
--- Clean up session lama jika di-execute ulang
 if getgenv().AutoLockCleanup then
     pcall(getgenv().AutoLockCleanup)
 end
@@ -13,12 +11,12 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Variables Configuration
+-- Configuration Variables
 local AutoLockEnabled = false
 local ESPEnabled = true
 local ShowFOV = true
-local FOVRadius = 120
-local LockSmoothness = 0.25
+local FOVRadius = 100
+local LockSmoothness = 0.2
 local ESPHighlights = {}
 
 -- Raycast Setup (Wall Check)
@@ -26,9 +24,9 @@ local raycastParams = RaycastParams.new()
 raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 raycastParams.IgnoreWater = true
 
--- ScreenGui Setup with Executor Protection
+-- ScreenGui Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AutoLockAestheticUI"
+ScreenGui.Name = "AutoLockCompactUI"
 ScreenGui.ResetOnSpawn = false
 
 if gethui then
@@ -37,18 +35,15 @@ elseif syn and syn.protect_gui then
     syn.protect_gui(ScreenGui)
     ScreenGui.Parent = game:GetService("CoreGui")
 else
-    local success, _ = pcall(function()
-        ScreenGui.Parent = game:GetService("CoreGui")
-    end)
-    if not success then
-        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    end
+    pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
+    if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 end
 
--- ==================== FOV CIRCLE ====================
+-- ==================== FOV CIRCLE (CENTER OF SCREEN) ====================
 local FOVCircle = Instance.new("Frame")
 FOVCircle.Name = "FOVCircle"
 FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVCircle.Position = UDim2.new(0.5, 0, 0.5, 0) -- Pas di tengah layar
 FOVCircle.BackgroundTransparency = 1
 FOVCircle.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
 FOVCircle.Visible = ShowFOV
@@ -59,163 +54,146 @@ FOVCorner.CornerRadius = UDim.new(1, 0)
 FOVCorner.Parent = FOVCircle
 
 local FOVStroke = Instance.new("UIStroke")
-FOVStroke.Thickness = 2
+FOVStroke.Thickness = 1.5
 FOVStroke.Color = Color3.fromRGB(137, 180, 250)
 FOVStroke.Transparency = 0.2
 FOVStroke.Parent = FOVCircle
 
--- ==================== MAIN UI FRAME ====================
+-- ==================== COMPACT MAIN UI ====================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 310, 0, 330)
-MainFrame.Position = UDim2.new(0.5, -155, 0.3, 0)
+MainFrame.Size = UDim2.new(0, 220, 0, 210) -- Ukuran jauh lebih kecil
+MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 37)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.CornerRadius = UDim.new(0, 10)
 MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
-MainStroke.Thickness = 1.5
+MainStroke.Thickness = 1
 MainStroke.Color = Color3.fromRGB(69, 71, 90)
 MainStroke.Parent = MainFrame
 
 -- Top Bar Header
 local TopBar = Instance.new("Frame")
 TopBar.Name = "TopBar"
-TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.Size = UDim2.new(1, 0, 0, 32)
 TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
 TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
 local TopBarCorner = Instance.new("UICorner")
-TopBarCorner.CornerRadius = UDim.new(0, 12)
+TopBarCorner.CornerRadius = UDim.new(0, 10)
 TopBarCorner.Parent = TopBar
 
-local TopBarFix = Instance.new("Frame")
-TopBarFix.Size = UDim2.new(1, 0, 0, 10)
-TopBarFix.Position = UDim2.new(0, 0, 1, -10)
-TopBarFix.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
-TopBarFix.BorderSizePixel = 0
-TopBarFix.Parent = TopBar
-
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -90, 1, 0)
-Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "AUTO LOCK + ESP BODY"
+Title.Size = UDim2.new(1, -60, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.Text = "AUTO LOCK (CENTER)"
 Title.TextColor3 = Color3.fromRGB(205, 214, 244)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 13
+Title.TextSize = 11
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
 Title.Parent = TopBar
 
 -- Minimize Button
 local MinimizeBtn = Instance.new("TextButton")
-MinimizeBtn.Size = UDim2.new(0, 26, 0, 26)
-MinimizeBtn.Position = UDim2.new(1, -62, 0, 7)
+MinimizeBtn.Size = UDim2.new(0, 20, 0, 20)
+MinimizeBtn.Position = UDim2.new(1, -46, 0, 6)
 MinimizeBtn.Text = "-"
 MinimizeBtn.TextColor3 = Color3.fromRGB(205, 214, 244)
 MinimizeBtn.Font = Enum.Font.GothamBold
-MinimizeBtn.TextSize = 16
+MinimizeBtn.TextSize = 14
 MinimizeBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
 MinimizeBtn.Parent = TopBar
 
 local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 6)
+MinCorner.CornerRadius = UDim.new(0, 4)
 MinCorner.Parent = MinimizeBtn
 
 -- Delete Button
 local DeleteBtn = Instance.new("TextButton")
-DeleteBtn.Size = UDim2.new(0, 26, 0, 26)
-DeleteBtn.Position = UDim2.new(1, -32, 0, 7)
+DeleteBtn.Size = UDim2.new(0, 20, 0, 20)
+DeleteBtn.Position = UDim2.new(1, -22, 0, 6)
 DeleteBtn.Text = "×"
 DeleteBtn.TextColor3 = Color3.fromRGB(243, 139, 168)
 DeleteBtn.Font = Enum.Font.GothamBold
-DeleteBtn.TextSize = 18
+DeleteBtn.TextSize = 14
 DeleteBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
 DeleteBtn.Parent = TopBar
 
 local DelCorner = Instance.new("UICorner")
-DelCorner.CornerRadius = UDim.new(0, 6)
+DelCorner.CornerRadius = UDim.new(0, 4)
 DelCorner.Parent = DeleteBtn
 
--- Content Container
+-- Content Area
 local Content = Instance.new("Frame")
 Content.Name = "Content"
-Content.Size = UDim2.new(1, -24, 1, -52)
-Content.Position = UDim2.new(0, 12, 0, 46)
+Content.Size = UDim2.new(1, -16, 1, -40)
+Content.Position = UDim2.new(0, 8, 0, 36)
 Content.BackgroundTransparency = 1
 Content.Parent = MainFrame
 
 -- 1. Auto Lock Toggle
 local LockToggle = Instance.new("TextButton")
-LockToggle.Size = UDim2.new(1, 0, 0, 40)
+LockToggle.Size = UDim2.new(1, 0, 0, 30)
 LockToggle.Position = UDim2.new(0, 0, 0, 0)
 LockToggle.Text = "Auto Lock: OFF"
 LockToggle.TextColor3 = Color3.fromRGB(243, 139, 168)
 LockToggle.Font = Enum.Font.GothamBold
-LockToggle.TextSize = 12
+LockToggle.TextSize = 11
 LockToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
 LockToggle.Parent = Content
 
 local LockCorner = Instance.new("UICorner")
-LockCorner.CornerRadius = UDim.new(0, 8)
+LockCorner.CornerRadius = UDim.new(0, 6)
 LockCorner.Parent = LockToggle
 
-local LockStroke = Instance.new("UIStroke")
-LockStroke.Thickness = 1
-LockStroke.Color = Color3.fromRGB(243, 139, 168)
-LockStroke.Parent = LockToggle
-
--- 2. ESP Body Toggle
+-- 2. ESP Toggle
 local ESPToggle = Instance.new("TextButton")
-ESPToggle.Size = UDim2.new(1, 0, 0, 40)
-ESPToggle.Position = UDim2.new(0, 0, 0, 48)
+ESPToggle.Size = UDim2.new(1, 0, 0, 30)
+ESPToggle.Position = UDim2.new(0, 0, 0, 34)
 ESPToggle.Text = "ESP Body: ON"
 ESPToggle.TextColor3 = Color3.fromRGB(166, 227, 161)
 ESPToggle.Font = Enum.Font.GothamBold
-ESPToggle.TextSize = 12
+ESPToggle.TextSize = 11
 ESPToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
 ESPToggle.Parent = Content
 
 local ESPCorner = Instance.new("UICorner")
-ESPCorner.CornerRadius = UDim.new(0, 8)
+ESPCorner.CornerRadius = UDim.new(0, 6)
 ESPCorner.Parent = ESPToggle
-
-local ESPStroke = Instance.new("UIStroke")
-ESPStroke.Thickness = 1
-ESPStroke.Color = Color3.fromRGB(166, 227, 161)
-ESPStroke.Parent = ESPToggle
 
 -- 3. FOV Adjuster
 local FOVFrame = Instance.new("Frame")
-FOVFrame.Size = UDim2.new(1, 0, 0, 40)
-FOVFrame.Position = UDim2.new(0, 0, 0, 96)
+FOVFrame.Size = UDim2.new(1, 0, 0, 30)
+FOVFrame.Position = UDim2.new(0, 0, 0, 68)
 FOVFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
 FOVFrame.Parent = Content
 
 local FOVFrameCorner = Instance.new("UICorner")
-FOVFrameCorner.CornerRadius = UDim.new(0, 8)
+FOVFrameCorner.CornerRadius = UDim.new(0, 6)
 FOVFrameCorner.Parent = FOVFrame
 
 local FOVLabel = Instance.new("TextLabel")
-FOVLabel.Size = UDim2.new(0.5, 0, 1, 0)
-FOVLabel.Position = UDim2.new(0, 12, 0, 0)
-FOVLabel.Text = "Ukuran FOV: " .. tostring(FOVRadius)
+FOVLabel.Size = UDim2.new(0.6, 0, 1, 0)
+FOVLabel.Position = UDim2.new(0, 8, 0, 0)
+FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
 FOVLabel.TextColor3 = Color3.fromRGB(205, 214, 244)
 FOVLabel.Font = Enum.Font.GothamMedium
-FOVLabel.TextSize = 12
+FOVLabel.TextSize = 11
 FOVLabel.TextXAlignment = Enum.TextXAlignment.Left
 FOVLabel.BackgroundTransparency = 1
 FOVLabel.Parent = FOVFrame
 
 local FOVPlus = Instance.new("TextButton")
-FOVPlus.Size = UDim2.new(0, 28, 0, 26)
-FOVPlus.Position = UDim2.new(1, -34, 0.5, -13)
+FOVPlus.Size = UDim2.new(0, 22, 0, 22)
+FOVPlus.Position = UDim2.new(1, -26, 0.5, -11)
 FOVPlus.Text = "+"
 FOVPlus.TextColor3 = Color3.fromRGB(205, 214, 244)
 FOVPlus.Font = Enum.Font.GothamBold
@@ -223,12 +201,12 @@ FOVPlus.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
 FOVPlus.Parent = FOVFrame
 
 local FOVPlusCorner = Instance.new("UICorner")
-FOVPlusCorner.CornerRadius = UDim.new(0, 6)
+FOVPlusCorner.CornerRadius = UDim.new(0, 4)
 FOVPlusCorner.Parent = FOVPlus
 
 local FOVMinus = Instance.new("TextButton")
-FOVMinus.Size = UDim2.new(0, 28, 0, 26)
-FOVMinus.Position = UDim2.new(1, -68, 0.5, -13)
+FOVMinus.Size = UDim2.new(0, 22, 0, 22)
+FOVMinus.Position = UDim2.new(1, -52, 0.5, -11)
 FOVMinus.Text = "-"
 FOVMinus.TextColor3 = Color3.fromRGB(205, 214, 244)
 FOVMinus.Font = Enum.Font.GothamBold
@@ -236,44 +214,34 @@ FOVMinus.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
 FOVMinus.Parent = FOVFrame
 
 local FOVMinusCorner = Instance.new("UICorner")
-FOVMinusCorner.CornerRadius = UDim.new(0, 6)
+FOVMinusCorner.CornerRadius = UDim.new(0, 4)
 FOVMinusCorner.Parent = FOVMinus
 
 -- 4. FOV Visibility Toggle
 local FOVVisToggle = Instance.new("TextButton")
-FOVVisToggle.Size = UDim2.new(1, 0, 0, 40)
-FOVVisToggle.Position = UDim2.new(0, 0, 0, 144)
-FOVVisToggle.Text = "Lingkaran FOV: TAMPIL"
+FOVVisToggle.Size = UDim2.new(1, 0, 0, 30)
+FOVVisToggle.Position = UDim2.new(0, 0, 0, 102)
+FOVVisToggle.Text = "Lingkaran: TAMPIL"
 FOVVisToggle.TextColor3 = Color3.fromRGB(166, 227, 161)
 FOVVisToggle.Font = Enum.Font.GothamMedium
-FOVVisToggle.TextSize = 12
+FOVVisToggle.TextSize = 11
 FOVVisToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
 FOVVisToggle.Parent = Content
 
 local FOVVisCorner = Instance.new("UICorner")
-FOVVisCorner.CornerRadius = UDim.new(0, 8)
+FOVVisCorner.CornerRadius = UDim.new(0, 6)
 FOVVisCorner.Parent = FOVVisToggle
 
--- 5. FOV Color Customization
+-- 5. Color Customization
 local ColorFrame = Instance.new("Frame")
-ColorFrame.Size = UDim2.new(1, 0, 0, 32)
-ColorFrame.Position = UDim2.new(0, 0, 0, 192)
+ColorFrame.Size = UDim2.new(1, 0, 0, 24)
+ColorFrame.Position = UDim2.new(0, 0, 0, 136)
 ColorFrame.BackgroundTransparency = 1
 ColorFrame.Parent = Content
 
-local ColorLabel = Instance.new("TextLabel")
-ColorLabel.Size = UDim2.new(0, 80, 1, 0)
-ColorLabel.Text = "Warna FOV:"
-ColorLabel.TextColor3 = Color3.fromRGB(205, 214, 244)
-ColorLabel.Font = Enum.Font.GothamMedium
-ColorLabel.TextSize = 12
-ColorLabel.TextXAlignment = Enum.TextXAlignment.Left
-ColorLabel.BackgroundTransparency = 1
-ColorLabel.Parent = ColorFrame
-
 local palette = {
     Color3.fromRGB(137, 180, 250), -- Biru
-    Color3.fromRGB(243, 139, 168), -- Merah Muda
+    Color3.fromRGB(243, 139, 168), -- Merah
     Color3.fromRGB(166, 227, 161), -- Hijau
     Color3.fromRGB(249, 226, 175), -- Kuning
     Color3.fromRGB(203, 166, 247)  -- Ungu
@@ -281,8 +249,8 @@ local palette = {
 
 for i, col in ipairs(palette) do
     local cBtn = Instance.new("TextButton")
-    cBtn.Size = UDim2.new(0, 24, 0, 24)
-    cBtn.Position = UDim2.new(0, 85 + (i-1)*32, 0.5, -12)
+    cBtn.Size = UDim2.new(0, 18, 0, 18)
+    cBtn.Position = UDim2.new(0, (i-1)*41 + 6, 0.5, -9)
     cBtn.Text = ""
     cBtn.BackgroundColor3 = col
     cBtn.Parent = ColorFrame
@@ -296,7 +264,7 @@ for i, col in ipairs(palette) do
     end)
 end
 
--- ==================== UI LOGIC ====================
+-- ==================== INTERACTION LOGIC ====================
 
 -- Draggable UI
 local dragging, dragInput, dragStart, startPos
@@ -334,44 +302,39 @@ local minimized = false
 MinimizeBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
     Content.Visible = not minimized
-    TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = minimized and UDim2.new(0, 310, 0, 40) or UDim2.new(0, 310, 0, 330)
+    TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = minimized and UDim2.new(0, 220, 0, 32) or UDim2.new(0, 220, 0, 210)
     }):Play()
     MinimizeBtn.Text = minimized and "+" or "-"
 end)
 
--- Auto Lock Toggle
+-- Toggles
 LockToggle.MouseButton1Click:Connect(function()
     AutoLockEnabled = not AutoLockEnabled
     LockToggle.Text = AutoLockEnabled and "Auto Lock: ON" or "Auto Lock: OFF"
     LockToggle.TextColor3 = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-    LockStroke.Color = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
 end)
 
--- ESP Toggle
 ESPToggle.MouseButton1Click:Connect(function()
     ESPEnabled = not ESPEnabled
     ESPToggle.Text = ESPEnabled and "ESP Body: ON" or "ESP Body: OFF"
     ESPToggle.TextColor3 = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-    ESPStroke.Color = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
 end)
 
--- FOV Adjusters
 FOVPlus.MouseButton1Click:Connect(function()
-    FOVRadius = math.min(FOVRadius + 15, 350)
-    FOVLabel.Text = "Ukuran FOV: " .. tostring(FOVRadius)
+    FOVRadius = math.min(FOVRadius + 15, 300)
+    FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
 end)
 
 FOVMinus.MouseButton1Click:Connect(function()
     FOVRadius = math.max(FOVRadius - 15, 30)
-    FOVLabel.Text = "Ukuran FOV: " .. tostring(FOVRadius)
+    FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
 end)
 
--- FOV Circle Visibility
 FOVVisToggle.MouseButton1Click:Connect(function()
     ShowFOV = not ShowFOV
     FOVCircle.Visible = ShowFOV
-    FOVVisToggle.Text = ShowFOV and "Lingkaran FOV: TAMPIL" or "Lingkaran FOV: SEMBUNYI"
+    FOVVisToggle.Text = ShowFOV and "Lingkaran: TAMPIL" or "Lingkaran: SEMBUNYI"
     FOVVisToggle.TextColor3 = ShowFOV and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
 end)
 
@@ -389,7 +352,7 @@ end
 DeleteBtn.MouseButton1Click:Connect(Cleanup)
 getgenv().AutoLockCleanup = Cleanup
 
--- ==================== WALL CHECK & TARGET LOGIC ====================
+-- ==================== TARGETING & WALL CHECK LOGIC ====================
 
 local function IsVisible(targetPart, targetCharacter)
     if not LocalPlayer.Character then return false end
@@ -404,10 +367,11 @@ local function IsVisible(targetPart, targetCharacter)
     return true
 end
 
-local function GetClosestTargetInFOV()
+-- Mencari target terdekat dari TENGAH LAYAR
+local function GetClosestTargetInCenterFOV()
     local closestTarget = nil
     local shortestDistance = FOVRadius
-    local mousePos = UserInputService:GetMouseLocation()
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
@@ -415,10 +379,14 @@ local function GetClosestTargetInFOV()
             local targetPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
             local humanoid = char:FindFirstChildOfClass("Humanoid")
 
+            -- Validasi Player Masih Hidup
             if targetPart and humanoid and humanoid.Health > 0 then
                 local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                
                 if onScreen then
-                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                    -- Jarak dihitung dari TENGAH LAYAR
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                    
                     if distance <= shortestDistance then
                         if IsVisible(targetPart, char) then
                             shortestDistance = distance
@@ -478,14 +446,15 @@ end
 -- ==================== MAIN LOOP ====================
 
 renderConnection = RunService.RenderStepped:Connect(function()
-    local mousePos = UserInputService:GetMouseLocation()
-    FOVCircle.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
+    -- Update Ukuran Lingkaran FOV di Tengah Layar
     FOVCircle.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
 
+    -- Update ESP
     UpdateESP()
 
+    -- Execution Auto Lock
     if AutoLockEnabled then
-        local targetPart = GetClosestTargetInFOV()
+        local targetPart = GetClosestTargetInCenterFOV()
         if targetPart then
             local currentCF = Camera.CFrame
             local targetCF = CFrame.new(currentCF.Position, targetPart.Position)
