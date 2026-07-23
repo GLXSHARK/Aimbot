@@ -1,4 +1,4 @@
--- [[ HARD LOCK & ESP WITH FLOATING BUTTONS + DYNAMIC RESPAWN DETECT ]] --
+-- [[ GLX AIMBOT KEYLESS - LIGHTWEIGHT & MANUAL FLOATING ESP ]] --
 
 if getgenv().AutoLockCleanup then
     pcall(getgenv().AutoLockCleanup)
@@ -11,625 +11,829 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Configuration Variables
-local AutoLockEnabled = false
-local LockHead = false -- false = Lock Badan, true = Lock Kepala
-local InstantLock = true 
-local ESPEnabled = true
-local ShowFOV = true
-local FOVRadius = 120
-local ESPHighlights = {}
-local PlayerConnections = {}
-
--- Raycast Setup (Wall Check)
-local raycastParams = RaycastParams.new()
-raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-raycastParams.IgnoreWater = true
-
--- ScreenGui Setup
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FloatingAutoLockUI"
-ScreenGui.ResetOnSpawn = false
-
-if gethui then
-    ScreenGui.Parent = gethui()
-elseif syn and syn.protect_gui then
-    syn.protect_gui(ScreenGui)
-    ScreenGui.Parent = game:GetService("CoreGui")
-else
-    pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
-    if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+-- Helper to safely get GUI parent
+local function GetGuiParent()
+    if gethui then
+        return gethui()
+    elseif syn and syn.protect_gui then
+        local gui = Instance.new("ScreenGui")
+        syn.protect_gui(gui)
+        return game:GetService("CoreGui")
+    else
+        local success, result = pcall(function() return game:GetService("CoreGui") end)
+        if success and result then return result end
+        return LocalPlayer:WaitForChild("PlayerGui")
+    end
 end
 
--- ==================== FOV CIRCLE ====================
-local FOVCircle = Instance.new("Frame")
-FOVCircle.Name = "FOVCircle"
-FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
-FOVCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
-FOVCircle.BackgroundTransparency = 1
-FOVCircle.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
-FOVCircle.Visible = ShowFOV
-FOVCircle.Parent = ScreenGui
-
-local FOVCorner = Instance.new("UICorner")
-FOVCorner.CornerRadius = UDim.new(1, 0)
-FOVCorner.Parent = FOVCircle
-
-local FOVStroke = Instance.new("UIStroke")
-FOVStroke.Thickness = 1.5
-FOVStroke.Color = Color3.fromRGB(137, 180, 250)
-FOVStroke.Transparency = 0.2
-FOVStroke.Parent = FOVCircle
-
--- Helper Function: Make Elements Draggable
-local function MakeDraggable(frame, handle)
-    handle = handle or frame
-    local dragging, dragInput, dragStart, startPos
-
-    handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    handle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            TweenService:Create(frame, TweenInfo.new(0.06), {
-                Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            }):Play()
-        end
-    end)
-end
-
--- ==================== FLOATING QUICK BUTTONS ====================
-local FloatingContainer = Instance.new("Frame")
-FloatingContainer.Name = "FloatingContainer"
-FloatingContainer.Size = UDim2.new(0, 110, 0, 50)
-FloatingContainer.Position = UDim2.new(0.85, 0, 0.2, 0)
-FloatingContainer.BackgroundTransparency = 1
-FloatingContainer.Parent = ScreenGui
-
--- Floating Lock Button
-local FloatLockBtn = Instance.new("TextButton")
-FloatLockBtn.Name = "FloatLockBtn"
-FloatLockBtn.Size = UDim2.new(0, 48, 0, 48)
-FloatLockBtn.Position = UDim2.new(0, 0, 0, 0)
-FloatLockBtn.BackgroundColor3 = Color3.fromRGB(243, 139, 168)
-FloatLockBtn.Text = "🎯\nOFF"
-FloatLockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatLockBtn.Font = Enum.Font.GothamBold
-FloatLockBtn.TextSize = 10
-FloatLockBtn.Parent = FloatingContainer
-
-local FloatLockCorner = Instance.new("UICorner")
-FloatLockCorner.CornerRadius = UDim.new(1, 0)
-FloatLockCorner.Parent = FloatLockBtn
-
-local FloatLockStroke = Instance.new("UIStroke")
-FloatLockStroke.Thickness = 2
-FloatLockStroke.Color = Color3.fromRGB(30, 30, 46)
-FloatLockStroke.Parent = FloatLockBtn
-
--- Floating ESP Button
-local FloatESPBtn = Instance.new("TextButton")
-FloatESPBtn.Name = "FloatESPBtn"
-FloatESPBtn.Size = UDim2.new(0, 48, 0, 48)
-FloatESPBtn.Position = UDim2.new(0, 56, 0, 0)
-FloatESPBtn.BackgroundColor3 = Color3.fromRGB(166, 227, 161)
-FloatESPBtn.Text = "👁️\nON"
-FloatESPBtn.TextColor3 = Color3.fromRGB(30, 30, 46)
-FloatESPBtn.Font = Enum.Font.GothamBold
-FloatESPBtn.TextSize = 10
-FloatESPBtn.Parent = FloatingContainer
-
-local FloatESPCorner = Instance.new("UICorner")
-FloatESPCorner.CornerRadius = UDim.new(1, 0)
-FloatESPCorner.Parent = FloatESPBtn
-
-local FloatESPStroke = Instance.new("UIStroke")
-FloatESPStroke.Thickness = 2
-FloatESPStroke.Color = Color3.fromRGB(30, 30, 46)
-FloatESPStroke.Parent = FloatESPBtn
-
-MakeDraggable(FloatingContainer, FloatingContainer)
-MakeDraggable(FloatingContainer, FloatLockBtn)
-MakeDraggable(FloatingContainer, FloatESPBtn)
-
--- ==================== MAIN PANEL UI ====================
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 280)
-MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 37)
-MainFrame.BorderSizePixel = 0
-MainFrame.ClipsDescendants = true
-MainFrame.Parent = ScreenGui
-
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = MainFrame
-
-local MainStroke = Instance.new("UIStroke")
-MainStroke.Thickness = 1
-MainStroke.Color = Color3.fromRGB(69, 71, 90)
-MainStroke.Parent = MainFrame
-
--- Top Bar Header
-local TopBar = Instance.new("Frame")
-TopBar.Name = "TopBar"
-TopBar.Size = UDim2.new(1, 0, 0, 32)
-TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
-TopBar.BorderSizePixel = 0
-TopBar.Parent = MainFrame
-
-local TopBarCorner = Instance.new("UICorner")
-TopBarCorner.CornerRadius = UDim.new(0, 10)
-TopBarCorner.Parent = TopBar
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -60, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "AUTO LOCK V3"
-Title.TextColor3 = Color3.fromRGB(205, 214, 244)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 11
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.BackgroundTransparency = 1
-Title.Parent = TopBar
-
--- Minimize Button
-local MinimizeBtn = Instance.new("TextButton")
-MinimizeBtn.Size = UDim2.new(0, 20, 0, 20)
-MinimizeBtn.Position = UDim2.new(1, -46, 0, 6)
-MinimizeBtn.Text = "-"
-MinimizeBtn.TextColor3 = Color3.fromRGB(205, 214, 244)
-MinimizeBtn.Font = Enum.Font.GothamBold
-MinimizeBtn.TextSize = 14
-MinimizeBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-MinimizeBtn.Parent = TopBar
-
-local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 4)
-MinCorner.Parent = MinimizeBtn
-
--- Delete Button
-local DeleteBtn = Instance.new("TextButton")
-DeleteBtn.Size = UDim2.new(0, 20, 0, 20)
-DeleteBtn.Position = UDim2.new(1, -22, 0, 6)
-DeleteBtn.Text = "×"
-DeleteBtn.TextColor3 = Color3.fromRGB(243, 139, 168)
-DeleteBtn.Font = Enum.Font.GothamBold
-DeleteBtn.TextSize = 14
-DeleteBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-DeleteBtn.Parent = TopBar
-
-local DelCorner = Instance.new("UICorner")
-DelCorner.CornerRadius = UDim.new(0, 4)
-DelCorner.Parent = DeleteBtn
-
-MakeDraggable(MainFrame, TopBar)
-
--- Content Container
-local Content = Instance.new("Frame")
-Content.Name = "Content"
-Content.Size = UDim2.new(1, -16, 1, -40)
-Content.Position = UDim2.new(0, 8, 0, 36)
-Content.BackgroundTransparency = 1
-Content.Parent = MainFrame
-
--- 1. Auto Lock Toggle Panel Button
-local LockToggle = Instance.new("TextButton")
-LockToggle.Size = UDim2.new(1, 0, 0, 30)
-LockToggle.Position = UDim2.new(0, 0, 0, 0)
-LockToggle.Text = "Auto Lock: OFF"
-LockToggle.TextColor3 = Color3.fromRGB(243, 139, 168)
-LockToggle.Font = Enum.Font.GothamBold
-LockToggle.TextSize = 11
-LockToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
-LockToggle.Parent = Content
-
-local LockCorner = Instance.new("UICorner")
-LockCorner.CornerRadius = UDim.new(0, 6)
-LockCorner.Parent = LockToggle
-
--- 2. Target Part Toggle (BADAN / KEPALA)
-local TargetToggle = Instance.new("TextButton")
-TargetToggle.Size = UDim2.new(1, 0, 0, 30)
-TargetToggle.Position = UDim2.new(0, 0, 0, 34)
-TargetToggle.Text = "Target Lock: BADAN"
-TargetToggle.TextColor3 = Color3.fromRGB(137, 180, 250)
-TargetToggle.Font = Enum.Font.GothamBold
-TargetToggle.TextSize = 11
-TargetToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
-TargetToggle.Parent = Content
-
-local TargetCorner = Instance.new("UICorner")
-TargetCorner.CornerRadius = UDim.new(0, 6)
-TargetCorner.Parent = TargetToggle
-
--- 3. Lock Mode Toggle (HARD / SMOOTH)
-local ModeToggle = Instance.new("TextButton")
-ModeToggle.Size = UDim2.new(1, 0, 0, 30)
-ModeToggle.Position = UDim2.new(0, 0, 0, 68)
-ModeToggle.Text = "Mode Lock: HARD (INSTANT)"
-ModeToggle.TextColor3 = Color3.fromRGB(166, 227, 161)
-ModeToggle.Font = Enum.Font.GothamBold
-ModeToggle.TextSize = 10
-ModeToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
-ModeToggle.Parent = Content
-
-local ModeCorner = Instance.new("UICorner")
-ModeCorner.CornerRadius = UDim.new(0, 6)
-ModeCorner.Parent = ModeToggle
-
--- 4. ESP Toggle Panel Button
-local ESPToggle = Instance.new("TextButton")
-ESPToggle.Size = UDim2.new(1, 0, 0, 30)
-ESPToggle.Position = UDim2.new(0, 0, 0, 102)
-ESPToggle.Text = "ESP Body: ON"
-ESPToggle.TextColor3 = Color3.fromRGB(166, 227, 161)
-ESPToggle.Font = Enum.Font.GothamBold
-ESPToggle.TextSize = 11
-ESPToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
-ESPToggle.Parent = Content
-
-local ESPCorner = Instance.new("UICorner")
-ESPCorner.CornerRadius = UDim.new(0, 6)
-ESPCorner.Parent = ESPToggle
-
--- 5. FOV Adjuster
-local FOVFrame = Instance.new("Frame")
-FOVFrame.Size = UDim2.new(1, 0, 0, 30)
-FOVFrame.Position = UDim2.new(0, 0, 0, 136)
-FOVFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
-FOVFrame.Parent = Content
-
-local FOVFrameCorner = Instance.new("UICorner")
-FOVFrameCorner.CornerRadius = UDim.new(0, 6)
-FOVFrameCorner.Parent = FOVFrame
-
-local FOVLabel = Instance.new("TextLabel")
-FOVLabel.Size = UDim2.new(0.6, 0, 1, 0)
-FOVLabel.Position = UDim2.new(0, 8, 0, 0)
-FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
-FOVLabel.TextColor3 = Color3.fromRGB(205, 214, 244)
-FOVLabel.Font = Enum.Font.GothamMedium
-FOVLabel.TextSize = 11
-FOVLabel.TextXAlignment = Enum.TextXAlignment.Left
-FOVLabel.BackgroundTransparency = 1
-FOVLabel.Parent = FOVFrame
-
-local FOVPlus = Instance.new("TextButton")
-FOVPlus.Size = UDim2.new(0, 22, 0, 22)
-FOVPlus.Position = UDim2.new(1, -26, 0.5, -11)
-FOVPlus.Text = "+"
-FOVPlus.TextColor3 = Color3.fromRGB(205, 214, 244)
-FOVPlus.Font = Enum.Font.GothamBold
-FOVPlus.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-FOVPlus.Parent = FOVFrame
-
-local FOVPlusCorner = Instance.new("UICorner")
-FOVPlusCorner.CornerRadius = UDim.new(0, 4)
-FOVPlusCorner.Parent = FOVPlus
-
-local FOVMinus = Instance.new("TextButton")
-FOVMinus.Size = UDim2.new(0, 22, 0, 22)
-FOVMinus.Position = UDim2.new(1, -52, 0.5, -11)
-FOVMinus.Text = "-"
-FOVMinus.TextColor3 = Color3.fromRGB(205, 214, 244)
-FOVMinus.Font = Enum.Font.GothamBold
-FOVMinus.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-FOVMinus.Parent = FOVFrame
-
-local FOVMinusCorner = Instance.new("UICorner")
-FOVMinusCorner.CornerRadius = UDim.new(0, 4)
-FOVMinusCorner.Parent = FOVMinus
-
--- 6. FOV Visibility Toggle
-local FOVVisToggle = Instance.new("TextButton")
-FOVVisToggle.Size = UDim2.new(1, 0, 0, 30)
-FOVVisToggle.Position = UDim2.new(0, 0, 0, 170)
-FOVVisToggle.Text = "Lingkaran: TAMPIL"
-FOVVisToggle.TextColor3 = Color3.fromRGB(166, 227, 161)
-FOVVisToggle.Font = Enum.Font.GothamMedium
-FOVVisToggle.TextSize = 11
-FOVVisToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
-FOVVisToggle.Parent = Content
-
-local FOVVisCorner = Instance.new("UICorner")
-FOVVisCorner.CornerRadius = UDim.new(0, 6)
-FOVVisCorner.Parent = FOVVisToggle
-
--- 7. Color Customization
-local ColorFrame = Instance.new("Frame")
-ColorFrame.Size = UDim2.new(1, 0, 0, 24)
-ColorFrame.Position = UDim2.new(0, 0, 0, 206)
-ColorFrame.BackgroundTransparency = 1
-ColorFrame.Parent = Content
-
-local palette = {
-    Color3.fromRGB(137, 180, 250),
-    Color3.fromRGB(243, 139, 168),
-    Color3.fromRGB(166, 227, 161),
-    Color3.fromRGB(249, 226, 175),
-    Color3.fromRGB(203, 166, 247)
+-- ==================== LANGUAGE DICTIONARY ====================
+local Translations = {
+    ID = {
+        Title = "GLX AIMBOT KEYLESS",
+        TabAimbot = "🎯 Aimbot",
+        TabESP = "👁️ ESP",
+        TabWall = "🧱 Wall Check",
+        TabFOV = "⚙️ FOV & Color",
+        LockOn = "Auto Lock: AKTIF",
+        LockOff = "Auto Lock: NONAKTIF",
+        TargetHead = "Target Lock: KEPALA",
+        TargetBody = "Target Lock: BADAN",
+        ModeHard = "Mode: HARD (INSTANT)",
+        ModeSmooth = "Mode: SMOOTH",
+        ESPOn = "ESP Body: AKTIF",
+        ESPOff = "ESP Body: NONAKTIF",
+        WallOn = "Cek Tembok: AKTIF",
+        WallOff = "Cek Tembok: TEMBUS (NO WALL)",
+        FOVShow = "Lingkaran FOV: TAMPIL",
+        FOVHide = "Lingkaran FOV: SEMBUNYI",
+        FloatLockBtnToggle = "Tombol Floating Lock: SEMBUNYI",
+        FloatLockBtnToggleOn = "Tombol Floating Lock: TAMPIL",
+        FloatESPBtnToggle = "Tombol Floating ESP: SEMBUNYI",
+        FloatESPBtnToggleOn = "Tombol Floating ESP: TAMPIL",
+        FloatWallBtnToggle = "Tombol Floating Wall: SEMBUNYI",
+        FloatWallBtnToggleOn = "Tombol Floating Wall: TAMPIL",
+        FloatLockOn = "🎯\nON",
+        FloatLockOff = "🎯\nOFF",
+        FloatESPOn = "👁️\nON",
+        FloatESPOff = "👁️\nOFF",
+        FloatWallOn = "🧱\nWALL",
+        FloatWallOff = "🧱\nNO WALL"
+    },
+    EN = {
+        Title = "GLX AIMBOT KEYLESS",
+        TabAimbot = "🎯 Aimbot",
+        TabESP = "👁️ ESP",
+        TabWall = "🧱 Wall Check",
+        TabFOV = "⚙️ FOV & Color",
+        LockOn = "Auto Lock: ON",
+        LockOff = "Auto Lock: OFF",
+        TargetHead = "Target Lock: HEAD",
+        TargetBody = "Target Lock: BODY",
+        ModeHard = "Lock Mode: HARD (INSTANT)",
+        ModeSmooth = "Lock Mode: SMOOTH",
+        ESPOn = "ESP Body: ON",
+        ESPOff = "ESP Body: OFF",
+        WallOn = "Wall Check: ON",
+        WallOff = "Wall Check: OFF (IGNORE WALL)",
+        FOVShow = "FOV Circle: SHOW",
+        FOVHide = "FOV Circle: HIDE",
+        FloatLockBtnToggle = "Floating Lock Button: HIDDEN",
+        FloatLockBtnToggleOn = "Floating Lock Button: SHOWN",
+        FloatESPBtnToggle = "Floating ESP Button: HIDDEN",
+        FloatESPBtnToggleOn = "Floating ESP Button: SHOWN",
+        FloatWallBtnToggle = "Floating Wall Button: HIDDEN",
+        FloatWallBtnToggleOn = "Floating Wall Button: SHOWN",
+        FloatLockOn = "🎯\nON",
+        FloatLockOff = "🎯\nOFF",
+        FloatESPOn = "👁️\nON",
+        FloatESPOff = "👁️\nOFF",
+        FloatWallOn = "🧱\nWALL",
+        FloatWallOff = "🧱\nNO WALL"
+    }
 }
 
-for i, col in ipairs(palette) do
-    local cBtn = Instance.new("TextButton")
-    cBtn.Size = UDim2.new(0, 18, 0, 18)
-    cBtn.Position = UDim2.new(0, (i-1)*41 + 6, 0.5, -9)
-    cBtn.Text = ""
-    cBtn.BackgroundColor3 = col
-    cBtn.Parent = ColorFrame
+-- ==================== STEP 1: LANGUAGE SELECTION MENU ====================
+local LangGui = Instance.new("ScreenGui")
+LangGui.Name = "GLXLangMenu"
+LangGui.ResetOnSpawn = false
+LangGui.Parent = GetGuiParent()
 
-    local cCorner = Instance.new("UICorner")
-    cCorner.CornerRadius = UDim.new(1, 0)
-    cCorner.Parent = cBtn
+local LangFrame = Instance.new("Frame")
+LangFrame.Size = UDim2.new(0, 280, 0, 160)
+LangFrame.Position = UDim2.new(0.5, -140, 0.5, -80)
+LangFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 37)
+LangFrame.BorderSizePixel = 0
+LangFrame.Parent = LangGui
 
-    cBtn.MouseButton1Click:Connect(function()
-        FOVStroke.Color = col
-    end)
+local LangCorner = Instance.new("UICorner")
+LangCorner.CornerRadius = UDim.new(0, 12)
+LangCorner.Parent = LangFrame
+
+local LangStroke = Instance.new("UIStroke")
+LangStroke.Thickness = 2
+LangStroke.Color = Color3.fromRGB(137, 180, 250)
+LangStroke.Parent = LangFrame
+
+local LangTitle = Instance.new("TextLabel")
+LangTitle.Size = UDim2.new(1, 0, 0, 45)
+LangTitle.Text = "GLX AIMBOT KEYLESS\nSELECT LANGUAGE / PILIH BAHASA"
+LangTitle.TextColor3 = Color3.fromRGB(205, 214, 244)
+LangTitle.Font = Enum.Font.GothamBold
+LangTitle.TextSize = 11
+LangTitle.BackgroundTransparency = 1
+LangTitle.Parent = LangFrame
+
+local BtnID = Instance.new("TextButton")
+BtnID.Size = UDim2.new(0.85, 0, 0, 36)
+BtnID.Position = UDim2.new(0.075, 0, 0, 55)
+BtnID.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
+BtnID.Text = "🇮🇩 Bahasa Indonesia"
+BtnID.TextColor3 = Color3.fromRGB(166, 227, 161)
+BtnID.Font = Enum.Font.GothamBold
+BtnID.TextSize = 12
+BtnID.Parent = LangFrame
+
+local BtnIDCorner = Instance.new("UICorner")
+BtnIDCorner.CornerRadius = UDim.new(0, 6)
+BtnIDCorner.Parent = BtnID
+
+local BtnEN = Instance.new("TextButton")
+BtnEN.Size = UDim2.new(0.85, 0, 0, 36)
+BtnEN.Position = UDim2.new(0.075, 0, 0, 100)
+BtnEN.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
+BtnEN.Text = "🇬🇧 English"
+BtnEN.TextColor3 = Color3.fromRGB(137, 180, 250)
+BtnEN.Font = Enum.Font.GothamBold
+BtnEN.TextSize = 12
+BtnEN.Parent = LangFrame
+
+local BtnENCorner = Instance.new("UICorner")
+BtnENCorner.CornerRadius = UDim.new(0, 6)
+BtnENCorner.Parent = BtnEN
+
+getgenv().AutoLockCleanup = function()
+    if LangGui then LangGui:Destroy() end
 end
 
--- ==================== STATE UPDATE FUNCTIONS ====================
+-- ==================== MAIN SCRIPT INITIALIZATION ====================
+local function LoadMainScript(langCode)
+    if LangGui then LangGui:Destroy() end
 
-local function UpdateLockState(state)
-    AutoLockEnabled = state
-    LockToggle.Text = AutoLockEnabled and "Auto Lock: ON" or "Auto Lock: OFF"
-    LockToggle.TextColor3 = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
+    local Lang = Translations[langCode]
+
+    -- Config Variables
+    local AutoLockEnabled = false
+    local LockHead = false
+    local InstantLock = true 
+    local ESPEnabled = false
+    local WallCheckEnabled = true
+    local ShowFOV = true
+    local FOVRadius = 120
     
-    FloatLockBtn.BackgroundColor3 = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-    FloatLockBtn.TextColor3 = AutoLockEnabled and Color3.fromRGB(30, 30, 46) or Color3.fromRGB(255, 255, 255)
-    FloatLockBtn.Text = AutoLockEnabled and "🎯\nON" or "🎯\nOFF"
-end
+    -- Floating Visibility States (Default Hidden)
+    local FloatLockVisible = false
+    local FloatESPVisible = false
+    local FloatWallVisible = false
 
-local function UpdateESPState(state)
-    ESPEnabled = state
-    ESPToggle.Text = ESPEnabled and "ESP Body: ON" or "ESP Body: OFF"
-    ESPToggle.TextColor3 = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-    
-    FloatESPBtn.BackgroundColor3 = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-    FloatESPBtn.TextColor3 = ESPEnabled and Color3.fromRGB(30, 30, 46) or Color3.fromRGB(255, 255, 255)
-    FloatESPBtn.Text = ESPEnabled and "👁️\nON" or "👁️\nOFF"
-end
+    local ESPHighlights = {}
 
--- Sync Initial State
-UpdateLockState(AutoLockEnabled)
-UpdateESPState(ESPEnabled)
+    -- Raycast Setup
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.IgnoreWater = true
 
--- Button Connections
-LockToggle.MouseButton1Click:Connect(function() UpdateLockState(not AutoLockEnabled) end)
-FloatLockBtn.MouseButton1Click:Connect(function() UpdateLockState(not AutoLockEnabled) end)
+    -- Main ScreenGui Setup
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "GLXAimbotUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = GetGuiParent()
 
-ESPToggle.MouseButton1Click:Connect(function() UpdateESPState(not ESPEnabled) end)
-FloatESPBtn.MouseButton1Click:Connect(function() UpdateESPState(not ESPEnabled) end)
-
-TargetToggle.MouseButton1Click:Connect(function()
-    LockHead = not LockHead
-    TargetToggle.Text = LockHead and "Target Lock: KEPALA" or "Target Lock: BADAN"
-    TargetToggle.TextColor3 = LockHead and Color3.fromRGB(203, 166, 247) or Color3.fromRGB(137, 180, 250)
-end)
-
-ModeToggle.MouseButton1Click:Connect(function()
-    InstantLock = not InstantLock
-    ModeToggle.Text = InstantLock and "Mode Lock: HARD (INSTANT)" or "Mode Lock: SMOOTH"
-    ModeToggle.TextColor3 = InstantLock and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(249, 226, 175)
-end)
-
-FOVPlus.MouseButton1Click:Connect(function()
-    FOVRadius = math.min(FOVRadius + 15, 300)
-    FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
-end)
-
-FOVMinus.MouseButton1Click:Connect(function()
-    FOVRadius = math.max(FOVRadius - 15, 30)
-    FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
-end)
-
-FOVVisToggle.MouseButton1Click:Connect(function()
-    ShowFOV = not ShowFOV
+    -- FOV Circle
+    local FOVCircle = Instance.new("Frame")
+    FOVCircle.Name = "FOVCircle"
+    FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+    FOVCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+    FOVCircle.BackgroundTransparency = 1
+    FOVCircle.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
     FOVCircle.Visible = ShowFOV
-    FOVVisToggle.Text = ShowFOV and "Lingkaran: TAMPIL" or "Lingkaran: SEMBUNYI"
-    FOVVisToggle.TextColor3 = ShowFOV and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-end)
+    FOVCircle.Parent = ScreenGui
 
--- Minimize Panel
-local minimized = false
-MinimizeBtn.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    Content.Visible = not minimized
-    TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = minimized and UDim2.new(0, 220, 0, 32) or UDim2.new(0, 220, 0, 280)
-    }):Play()
-    MinimizeBtn.Text = minimized and "+" or "-"
-end)
+    local FOVCorner = Instance.new("UICorner")
+    FOVCorner.CornerRadius = UDim.new(1, 0)
+    FOVCorner.Parent = FOVCircle
 
--- Cleanup Handler
-local renderConnection = nil
-local function Cleanup()
-    if renderConnection then renderConnection:Disconnect() end
-    for _, conns in pairs(PlayerConnections) do
-        for _, conn in ipairs(conns) do
-            if conn then conn:Disconnect() end
+    local FOVStroke = Instance.new("UIStroke")
+    FOVStroke.Thickness = 1.5
+    FOVStroke.Color = Color3.fromRGB(137, 180, 250)
+    FOVStroke.Transparency = 0.2
+    FOVStroke.Parent = FOVCircle
+
+    -- Draggable Helper (Touch & Mouse Support)
+    local function MakeDraggable(frame, handle)
+        handle = handle or frame
+        local dragging, dragInput, dragStart, startPos
+
+        handle.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = frame.Position
+
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+
+        handle.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if input == dragInput and dragging then
+                local delta = input.Position - dragStart
+                TweenService:Create(frame, TweenInfo.new(0.05), {
+                    Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                }):Play()
+            end
+        end)
+    end
+
+    -- ==================== FLOATING BUTTONS CONTAINER ====================
+    local FloatingContainer = Instance.new("Frame")
+    FloatingContainer.Name = "FloatingContainer"
+    FloatingContainer.Size = UDim2.new(0, 166, 0, 50)
+    FloatingContainer.Position = UDim2.new(0.75, 0, 0.2, 0)
+    FloatingContainer.BackgroundTransparency = 1
+    FloatingContainer.Parent = ScreenGui
+
+    -- 1. Floating Lock Button
+    local FloatLockBtn = Instance.new("TextButton")
+    FloatLockBtn.Size = UDim2.new(0, 48, 0, 48)
+    FloatLockBtn.Position = UDim2.new(0, 0, 0, 0)
+    FloatLockBtn.BackgroundColor3 = Color3.fromRGB(243, 139, 168)
+    FloatLockBtn.Text = Lang.FloatLockOff
+    FloatLockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FloatLockBtn.Font = Enum.Font.GothamBold
+    FloatLockBtn.TextSize = 10
+    FloatLockBtn.Visible = FloatLockVisible
+    FloatLockBtn.Parent = FloatingContainer
+
+    local FloatLockCorner = Instance.new("UICorner")
+    FloatLockCorner.CornerRadius = UDim.new(1, 0)
+    FloatLockCorner.Parent = FloatLockBtn
+
+    local FloatLockStroke = Instance.new("UIStroke")
+    FloatLockStroke.Thickness = 2
+    FloatLockStroke.Color = Color3.fromRGB(30, 30, 46)
+    FloatLockStroke.Parent = FloatLockBtn
+
+    -- 2. Floating ESP Button
+    local FloatESPBtn = Instance.new("TextButton")
+    FloatESPBtn.Size = UDim2.new(0, 48, 0, 48)
+    FloatESPBtn.Position = UDim2.new(0, 56, 0, 0)
+    FloatESPBtn.BackgroundColor3 = Color3.fromRGB(243, 139, 168)
+    FloatESPBtn.Text = Lang.FloatESPOff
+    FloatESPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FloatESPBtn.Font = Enum.Font.GothamBold
+    FloatESPBtn.TextSize = 10
+    FloatESPBtn.Visible = FloatESPVisible
+    FloatESPBtn.Parent = FloatingContainer
+
+    local FloatESPCorner = Instance.new("UICorner")
+    FloatESPCorner.CornerRadius = UDim.new(1, 0)
+    FloatESPCorner.Parent = FloatESPBtn
+
+    local FloatESPStroke = Instance.new("UIStroke")
+    FloatESPStroke.Thickness = 2
+    FloatESPStroke.Color = Color3.fromRGB(30, 30, 46)
+    FloatESPStroke.Parent = FloatESPBtn
+
+    -- 3. Floating Wall Check Button
+    local FloatWallBtn = Instance.new("TextButton")
+    FloatWallBtn.Size = UDim2.new(0, 48, 0, 48)
+    FloatWallBtn.Position = UDim2.new(0, 112, 0, 0)
+    FloatWallBtn.BackgroundColor3 = Color3.fromRGB(166, 227, 161)
+    FloatWallBtn.Text = Lang.FloatWallOn
+    FloatWallBtn.TextColor3 = Color3.fromRGB(30, 30, 46)
+    FloatWallBtn.Font = Enum.Font.GothamBold
+    FloatWallBtn.TextSize = 9
+    FloatWallBtn.Visible = FloatWallVisible
+    FloatWallBtn.Parent = FloatingContainer
+
+    local FloatWallCorner = Instance.new("UICorner")
+    FloatWallCorner.CornerRadius = UDim.new(1, 0)
+    FloatWallCorner.Parent = FloatWallBtn
+
+    local FloatWallStroke = Instance.new("UIStroke")
+    FloatWallStroke.Thickness = 2
+    FloatWallStroke.Color = Color3.fromRGB(30, 30, 46)
+    FloatWallStroke.Parent = FloatWallBtn
+
+    -- Enable Dragging for Floating Buttons
+    MakeDraggable(FloatingContainer, FloatingContainer)
+    MakeDraggable(FloatingContainer, FloatLockBtn)
+    MakeDraggable(FloatingContainer, FloatESPBtn)
+    MakeDraggable(FloatingContainer, FloatWallBtn)
+
+    -- ==================== LARGER MAIN PANEL WITH SIDEBAR ====================
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 460, 0, 270)
+    MainFrame.Position = UDim2.new(0.5, -230, 0.3, -135)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 37)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = ScreenGui
+
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 10)
+    MainCorner.Parent = MainFrame
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Thickness = 1.5
+    MainStroke.Color = Color3.fromRGB(137, 180, 250)
+    MainStroke.Parent = MainFrame
+
+    -- Header
+    local TopBar = Instance.new("Frame")
+    TopBar.Size = UDim2.new(1, 0, 0, 34)
+    TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
+    TopBar.BorderSizePixel = 0
+    TopBar.Parent = MainFrame
+
+    local TopBarCorner = Instance.new("UICorner")
+    TopBarCorner.CornerRadius = UDim.new(0, 10)
+    TopBarCorner.Parent = TopBar
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -60, 1, 0)
+    Title.Position = UDim2.new(0, 12, 0, 0)
+    Title.Text = Lang.Title
+    Title.TextColor3 = Color3.fromRGB(205, 214, 244)
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 12
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.BackgroundTransparency = 1
+    Title.Parent = TopBar
+
+    local MinimizeBtn = Instance.new("TextButton")
+    MinimizeBtn.Size = UDim2.new(0, 22, 0, 22)
+    MinimizeBtn.Position = UDim2.new(1, -50, 0, 6)
+    MinimizeBtn.Text = "-"
+    MinimizeBtn.TextColor3 = Color3.fromRGB(205, 214, 244)
+    MinimizeBtn.Font = Enum.Font.GothamBold
+    MinimizeBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+    MinimizeBtn.Parent = TopBar
+
+    local MinCorner = Instance.new("UICorner")
+    MinCorner.CornerRadius = UDim.new(0, 4)
+    MinCorner.Parent = MinimizeBtn
+
+    local DeleteBtn = Instance.new("TextButton")
+    DeleteBtn.Size = UDim2.new(0, 22, 0, 22)
+    DeleteBtn.Position = UDim2.new(1, -24, 0, 6)
+    DeleteBtn.Text = "×"
+    DeleteBtn.TextColor3 = Color3.fromRGB(243, 139, 168)
+    DeleteBtn.Font = Enum.Font.GothamBold
+    DeleteBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+    DeleteBtn.Parent = TopBar
+
+    local DelCorner = Instance.new("UICorner")
+    DelCorner.CornerRadius = UDim.new(0, 4)
+    DelCorner.Parent = DeleteBtn
+
+    MakeDraggable(MainFrame, TopBar)
+
+    -- Sidebar Left Container
+    local Sidebar = Instance.new("Frame")
+    Sidebar.Name = "Sidebar"
+    Sidebar.Size = UDim2.new(0, 130, 1, -38)
+    Sidebar.Position = UDim2.new(0, 6, 0, 38)
+    Sidebar.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
+    Sidebar.BorderSizePixel = 0
+    Sidebar.Parent = MainFrame
+
+    local SidebarCorner = Instance.new("UICorner")
+    SidebarCorner.CornerRadius = UDim.new(0, 8)
+    SidebarCorner.Parent = Sidebar
+
+    local SidebarList = Instance.new("UIListLayout")
+    SidebarList.Padding = UDim.new(0, 6)
+    SidebarList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    SidebarList.SortOrder = Enum.SortOrder.LayoutOrder
+    SidebarList.Parent = Sidebar
+
+    local SidebarPadding = Instance.new("UIPadding")
+    SidebarPadding.PaddingTop = UDim.new(0, 8)
+    SidebarPadding.Parent = Sidebar
+
+    -- Content Right Container
+    local ContentArea = Instance.new("Frame")
+    ContentArea.Name = "ContentArea"
+    ContentArea.Size = UDim2.new(1, -150, 1, -38)
+    ContentArea.Position = UDim2.new(0, 142, 0, 38)
+    ContentArea.BackgroundTransparency = 1
+    ContentArea.Parent = MainFrame
+
+    -- Tab Pages Container
+    local Pages = {}
+
+    local function CreateTabPage(name)
+        local page = Instance.new("Frame")
+        page.Name = name
+        page.Size = UDim2.new(1, -10, 1, -10)
+        page.Position = UDim2.new(0, 0, 0, 5)
+        page.BackgroundTransparency = 1
+        page.Visible = false
+        page.Parent = ContentArea
+
+        local layout = Instance.new("UIListLayout")
+        layout.Padding = UDim.new(0, 8)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Parent = page
+
+        Pages[name] = page
+        return page
+    end
+
+    local PageAimbot = CreateTabPage("Aimbot")
+    local PageESP = CreateTabPage("ESP")
+    local PageWall = CreateTabPage("Wall")
+    local PageFOV = CreateTabPage("FOV")
+
+    -- Sidebar Buttons Creator
+    local TabButtons = {}
+    local function CreateTabButton(name, labelText, targetPage)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.9, 0, 0, 34)
+        btn.Text = labelText
+        btn.TextColor3 = Color3.fromRGB(205, 214, 244)
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 11
+        btn.BackgroundColor3 = Color3.fromRGB(24, 24, 37)
+        btn.Parent = Sidebar
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = btn
+
+        btn.MouseButton1Click:Connect(function()
+            for _, p in pairs(Pages) do p.Visible = false end
+            for _, b in pairs(TabButtons) do 
+                b.BackgroundColor3 = Color3.fromRGB(24, 24, 37) 
+                b.TextColor3 = Color3.fromRGB(205, 214, 244)
+            end
+            targetPage.Visible = true
+            btn.BackgroundColor3 = Color3.fromRGB(137, 180, 250)
+            btn.TextColor3 = Color3.fromRGB(30, 30, 46)
+        end)
+
+        table.insert(TabButtons, btn)
+        return btn
+    end
+
+    local BtnTabAimbot = CreateTabButton("Aimbot", Lang.TabAimbot, PageAimbot)
+    local BtnTabESP = CreateTabButton("ESP", Lang.TabESP, PageESP)
+    local BtnTabWall = CreateTabButton("Wall", Lang.TabWall, PageWall)
+    local BtnTabFOV = CreateTabButton("FOV", Lang.TabFOV, PageFOV)
+
+    -- Default Active Tab
+    PageAimbot.Visible = true
+    BtnTabAimbot.BackgroundColor3 = Color3.fromRGB(137, 180, 250)
+    BtnTabAimbot.TextColor3 = Color3.fromRGB(30, 30, 46)
+
+    -- UI Button Creator Helper for Pages
+    local function CreateOptionButton(parentPage, text, color)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 32)
+        btn.Text = text
+        btn.TextColor3 = color
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 10
+        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
+        btn.Parent = parentPage
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = btn
+        return btn
+    end
+
+    -- ==================== TAB CONTENT CONTROLS ====================
+
+    -- 🎯 AIMBOT TAB
+    local LockToggle = CreateOptionButton(PageAimbot, Lang.LockOff, Color3.fromRGB(243, 139, 168))
+    local TargetToggle = CreateOptionButton(PageAimbot, Lang.TargetBody, Color3.fromRGB(137, 180, 250))
+    local ModeToggle = CreateOptionButton(PageAimbot, Lang.ModeHard, Color3.fromRGB(166, 227, 161))
+    local FloatLockToggleBtn = CreateOptionButton(PageAimbot, Lang.FloatLockBtnToggle, Color3.fromRGB(205, 214, 244))
+
+    -- 👁️ ESP TAB
+    local ESPToggle = CreateOptionButton(PageESP, Lang.ESPOff, Color3.fromRGB(243, 139, 168))
+    local FloatESPToggleBtn = CreateOptionButton(PageESP, Lang.FloatESPBtnToggle, Color3.fromRGB(205, 214, 244))
+
+    -- 🧱 WALL CHECK TAB
+    local WallToggle = CreateOptionButton(PageWall, Lang.WallOn, Color3.fromRGB(166, 227, 161))
+    local FloatWallToggleBtn = CreateOptionButton(PageWall, Lang.FloatWallBtnToggle, Color3.fromRGB(205, 214, 244))
+
+    -- ⚙️ FOV TAB
+    local FOVFrame = Instance.new("Frame")
+    FOVFrame.Size = UDim2.new(1, 0, 0, 32)
+    FOVFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
+    FOVFrame.Parent = PageFOV
+
+    local FOVFrameCorner = Instance.new("UICorner")
+    FOVFrameCorner.CornerRadius = UDim.new(0, 6)
+    FOVFrameCorner.Parent = FOVFrame
+
+    local FOVLabel = Instance.new("TextLabel")
+    FOVLabel.Size = UDim2.new(0.6, 0, 1, 0)
+    FOVLabel.Position = UDim2.new(0, 8, 0, 0)
+    FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
+    FOVLabel.TextColor3 = Color3.fromRGB(205, 214, 244)
+    FOVLabel.Font = Enum.Font.GothamMedium
+    FOVLabel.TextSize = 11
+    FOVLabel.TextXAlignment = Enum.TextXAlignment.Left
+    FOVLabel.BackgroundTransparency = 1
+    FOVLabel.Parent = FOVFrame
+
+    local FOVPlus = Instance.new("TextButton")
+    FOVPlus.Size = UDim2.new(0, 24, 0, 24)
+    FOVPlus.Position = UDim2.new(1, -28, 0.5, -12)
+    FOVPlus.Text = "+"
+    FOVPlus.TextColor3 = Color3.fromRGB(205, 214, 244)
+    FOVPlus.Font = Enum.Font.GothamBold
+    FOVPlus.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+    FOVPlus.Parent = FOVFrame
+
+    local FOVPlusCorner = Instance.new("UICorner")
+    FOVPlusCorner.CornerRadius = UDim.new(0, 4)
+    FOVPlusCorner.Parent = FOVPlus
+
+    local FOVMinus = Instance.new("TextButton")
+    FOVMinus.Size = UDim2.new(0, 24, 0, 24)
+    FOVMinus.Position = UDim2.new(1, -56, 0.5, -12)
+    FOVMinus.Text = "-"
+    FOVMinus.TextColor3 = Color3.fromRGB(205, 214, 244)
+    FOVMinus.Font = Enum.Font.GothamBold
+    FOVMinus.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+    FOVMinus.Parent = FOVFrame
+
+    local FOVMinusCorner = Instance.new("UICorner")
+    FOVMinusCorner.CornerRadius = UDim.new(0, 4)
+    FOVMinusCorner.Parent = FOVMinus
+
+    local FOVVisToggle = CreateOptionButton(PageFOV, Lang.FOVShow, Color3.fromRGB(166, 227, 161))
+
+    -- Color Palette
+    local ColorFrame = Instance.new("Frame")
+    ColorFrame.Size = UDim2.new(1, 0, 0, 28)
+    ColorFrame.BackgroundTransparency = 1
+    ColorFrame.Parent = PageFOV
+
+    local palette = {
+        Color3.fromRGB(137, 180, 250),
+        Color3.fromRGB(243, 139, 168),
+        Color3.fromRGB(166, 227, 161),
+        Color3.fromRGB(249, 226, 175),
+        Color3.fromRGB(203, 166, 247)
+    }
+
+    for i, col in ipairs(palette) do
+        local cBtn = Instance.new("TextButton")
+        cBtn.Size = UDim2.new(0, 22, 0, 22)
+        cBtn.Position = UDim2.new(0, (i-1)*50 + 8, 0.5, -11)
+        cBtn.Text = ""
+        cBtn.BackgroundColor3 = col
+        cBtn.Parent = ColorFrame
+
+        local cCorner = Instance.new("UICorner")
+        cCorner.CornerRadius = UDim.new(1, 0)
+        cCorner.Parent = cBtn
+
+        cBtn.MouseButton1Click:Connect(function()
+            FOVStroke.Color = col
+        end)
+    end
+
+    -- ==================== LIGHTWEIGHT MANUAL ESP LOGIC ====================
+    local function ClearAllESP()
+        for player, hl in pairs(ESPHighlights) do
+            if hl then pcall(function() hl:Destroy() end) end
+        end
+        table.clear(ESPHighlights)
+    end
+
+    local function ApplyESPToAll()
+        ClearAllESP()
+        if not ESPEnabled then return end
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local char = player.Character
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.Health > 0 then
+                    local hl = Instance.new("Highlight")
+                    hl.Name = "GLX_ESP"
+                    hl.FillColor = Color3.fromRGB(203, 166, 247)
+                    hl.FillTransparency = 0.65
+                    hl.OutlineColor = Color3.fromRGB(137, 180, 250)
+                    hl.OutlineTransparency = 0.1
+                    hl.Adornee = char
+                    hl.Parent = char
+                    ESPHighlights[player] = hl
+                end
+            end
         end
     end
-    table.clear(PlayerConnections)
 
-    for _, hl in pairs(ESPHighlights) do
-        if hl then hl:Destroy() end
+    -- ==================== STATE UPDATERS ====================
+    local function UpdateLockState(state)
+        AutoLockEnabled = state
+        LockToggle.Text = AutoLockEnabled and Lang.LockOn or Lang.LockOff
+        LockToggle.TextColor3 = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
+        
+        FloatLockBtn.BackgroundColor3 = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
+        FloatLockBtn.TextColor3 = AutoLockEnabled and Color3.fromRGB(30, 30, 46) or Color3.fromRGB(255, 255, 255)
+        FloatLockBtn.Text = AutoLockEnabled and Lang.FloatLockOn or Lang.FloatLockOff
     end
-    table.clear(ESPHighlights)
 
-    if ScreenGui then ScreenGui:Destroy() end
-end
+    local function UpdateESPState(state)
+        ESPEnabled = state
+        ESPToggle.Text = ESPEnabled and Lang.ESPOn or Lang.ESPOff
+        ESPToggle.TextColor3 = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
+        
+        FloatESPBtn.BackgroundColor3 = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
+        FloatESPBtn.TextColor3 = ESPEnabled and Color3.fromRGB(30, 30, 46) or Color3.fromRGB(255, 255, 255)
+        FloatESPBtn.Text = ESPEnabled and Lang.FloatESPOn or Lang.FloatESPOff
 
-DeleteBtn.MouseButton1Click:Connect(Cleanup)
-getgenv().AutoLockCleanup = Cleanup
-
--- ==================== TARGETING & WALL CHECK LOGIC ====================
-
-local function IsVisible(targetPart, targetCharacter)
-    if not LocalPlayer.Character then return false end
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-    local origin = Camera.CFrame.Position
-    local direction = (targetPart.Position - origin)
-    local rayResult = workspace:Raycast(origin, direction, raycastParams)
-    
-    if rayResult then
-        return rayResult.Instance:IsDescendantOf(targetCharacter)
+        -- Manual Render Trigger (Zero Background Overhead)
+        ApplyESPToAll()
     end
-    return true
-end
 
-local function GetClosestTargetInCenterFOV()
-    local closestTarget = nil
-    local shortestDistance = FOVRadius
-    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local function UpdateWallState(state)
+        WallCheckEnabled = state
+        WallToggle.Text = WallCheckEnabled and Lang.WallOn or Lang.WallOff
+        WallToggle.TextColor3 = WallCheckEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(249, 226, 175)
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local char = player.Character
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
+        FloatWallBtn.BackgroundColor3 = WallCheckEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(249, 226, 175)
+        FloatWallBtn.TextColor3 = Color3.fromRGB(30, 30, 46)
+        FloatWallBtn.Text = WallCheckEnabled and Lang.FloatWallOn or Lang.FloatWallOff
+    end
 
-            -- Cek Status Hidup Real-Time
-            if humanoid and humanoid.Health > 0 and char:IsDescendantOf(workspace) then
-                local targetPart = nil
-                
-                if LockHead then
-                    targetPart = char:FindFirstChild("Head")
-                else
-                    targetPart = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
-                end
+    -- Initial Sync
+    UpdateLockState(AutoLockEnabled)
+    UpdateESPState(ESPEnabled)
+    UpdateWallState(WallCheckEnabled)
 
-                if targetPart then
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+    -- Click Events Feature Toggles
+    LockToggle.MouseButton1Click:Connect(function() UpdateLockState(not AutoLockEnabled) end)
+    FloatLockBtn.MouseButton1Click:Connect(function() UpdateLockState(not AutoLockEnabled) end)
+
+    ESPToggle.MouseButton1Click:Connect(function() UpdateESPState(not ESPEnabled) end)
+    FloatESPBtn.MouseButton1Click:Connect(function() UpdateESPState(not ESPEnabled) end)
+
+    WallToggle.MouseButton1Click:Connect(function() UpdateWallState(not WallCheckEnabled) end)
+    FloatWallBtn.MouseButton1Click:Connect(function() UpdateWallState(not WallCheckEnabled) end)
+
+    -- Click Events Floating Button Display Toggles
+    FloatLockToggleBtn.MouseButton1Click:Connect(function()
+        FloatLockVisible = not FloatLockVisible
+        FloatLockBtn.Visible = FloatLockVisible
+        FloatLockToggleBtn.Text = FloatLockVisible and Lang.FloatLockBtnToggleOn or Lang.FloatLockBtnToggle
+        FloatLockToggleBtn.TextColor3 = FloatLockVisible and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(205, 214, 244)
+    end)
+
+    FloatESPToggleBtn.MouseButton1Click:Connect(function()
+        FloatESPVisible = not FloatESPVisible
+        FloatESPBtn.Visible = FloatESPVisible
+        FloatESPToggleBtn.Text = FloatESPVisible and Lang.FloatESPBtnToggleOn or Lang.FloatESPBtnToggle
+        FloatESPToggleBtn.TextColor3 = FloatESPVisible and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(205, 214, 244)
+    end)
+
+    FloatWallToggleBtn.MouseButton1Click:Connect(function()
+        FloatWallVisible = not FloatWallVisible
+        FloatWallBtn.Visible = FloatWallVisible
+        FloatWallToggleBtn.Text = FloatWallVisible and Lang.FloatWallBtnToggleOn or Lang.FloatWallBtnToggle
+        FloatWallToggleBtn.TextColor3 = FloatWallVisible and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(205, 214, 244)
+    end)
+
+    TargetToggle.MouseButton1Click:Connect(function()
+        LockHead = not LockHead
+        TargetToggle.Text = LockHead and Lang.TargetHead or Lang.TargetBody
+        TargetToggle.TextColor3 = LockHead and Color3.fromRGB(203, 166, 247) or Color3.fromRGB(137, 180, 250)
+    end)
+
+    ModeToggle.MouseButton1Click:Connect(function()
+        InstantLock = not InstantLock
+        ModeToggle.Text = InstantLock and Lang.ModeHard or Lang.ModeSmooth
+        ModeToggle.TextColor3 = InstantLock and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(249, 226, 175)
+    end)
+
+    FOVPlus.MouseButton1Click:Connect(function()
+        FOVRadius = math.min(FOVRadius + 15, 300)
+        FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
+    end)
+
+    FOVMinus.MouseButton1Click:Connect(function()
+        FOVRadius = math.max(FOVRadius - 15, 30)
+        FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
+    end)
+
+    FOVVisToggle.MouseButton1Click:Connect(function()
+        ShowFOV = not ShowFOV
+        FOVCircle.Visible = ShowFOV
+        FOVVisToggle.Text = ShowFOV and Lang.FOVShow or Lang.FOVHide
+        FOVVisToggle.TextColor3 = ShowFOV and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
+    end)
+
+    -- Minimize Panel
+    local minimized = false
+    MinimizeBtn.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        Sidebar.Visible = not minimized
+        ContentArea.Visible = not minimized
+        TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = minimized and UDim2.new(0, 460, 0, 34) or UDim2.new(0, 460, 0, 270)
+        }):Play()
+        MinimizeBtn.Text = minimized and "+" or "-"
+    end)
+
+    -- Cleanup Handler
+    local renderConnection = nil
+    local function Cleanup()
+        if renderConnection then renderConnection:Disconnect() end
+        ClearAllESP()
+        if ScreenGui then ScreenGui:Destroy() end
+    end
+
+    DeleteBtn.MouseButton1Click:Connect(Cleanup)
+    getgenv().AutoLockCleanup = Cleanup
+
+    -- ==================== WALL CHECK & TARGET LOGIC ====================
+    local function IsVisible(targetPart, targetCharacter)
+        if not WallCheckEnabled then return true end
+
+        if not LocalPlayer.Character then return false end
+        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+        local origin = Camera.CFrame.Position
+        local direction = (targetPart.Position - origin)
+        local rayResult = workspace:Raycast(origin, direction, raycastParams)
+        
+        if rayResult then
+            return rayResult.Instance:IsDescendantOf(targetCharacter)
+        end
+        return true
+    end
+
+    local function GetClosestTargetInCenterFOV()
+        local closestTarget = nil
+        local shortestDistance = FOVRadius
+        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local char = player.Character
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+
+                if humanoid and humanoid.Health > 0 and char:IsDescendantOf(workspace) then
+                    local targetPart = nil
                     
-                    if onScreen then
-                        local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                        if distance <= shortestDistance then
-                            if IsVisible(targetPart, char) then
-                                shortestDistance = distance
-                                closestTarget = targetPart
+                    if LockHead then
+                        targetPart = char:FindFirstChild("Head")
+                    else
+                        targetPart = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
+                    end
+
+                    if targetPart then
+                        local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                        
+                        if onScreen then
+                            local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                            if distance <= shortestDistance then
+                                if IsVisible(targetPart, char) then
+                                    shortestDistance = distance
+                                    closestTarget = targetPart
+                                end
                             end
                         end
                     end
                 end
             end
         end
-    end
-    return closestTarget
-end
-
--- ==================== DYNAMIC EVENT-DRIVEN ESP SYSTEM ====================
-
-local function RemoveESP(player)
-    if ESPHighlights[player] then
-        ESPHighlights[player]:Destroy()
-        ESPHighlights[player] = nil
-    end
-end
-
-local function ApplyHighlight(player, character)
-    if player == LocalPlayer then return end
-    RemoveESP(player)
-
-    if not ESPEnabled then return end
-
-    local humanoid = character:WaitForChild("Humanoid", 3)
-    if humanoid and humanoid.Health > 0 then
-        local hl = Instance.new("Highlight")
-        hl.Name = "DynamicESP"
-        hl.FillColor = Color3.fromRGB(203, 166, 247)
-        hl.FillTransparency = 0.65
-        hl.OutlineColor = Color3.fromRGB(137, 180, 250)
-        hl.OutlineTransparency = 0.1
-        hl.Adornee = character
-        hl.Parent = character
-        ESPHighlights[player] = hl
-
-        -- Event saat player mati saat bermain
-        local diedConn
-        diedConn = humanoid.Died:Connect(function()
-            RemoveESP(player)
-            if diedConn then diedConn:Disconnect() end
-        end)
-    end
-end
-
-local function TrackPlayer(player)
-    if player == LocalPlayer then return end
-    PlayerConnections[player] = {}
-
-    -- Handle Karakter Saat Ini
-    if player.Character then
-        task.spawn(ApplyHighlight, player, player.Character)
+        return closestTarget
     end
 
-    -- Handle Respawn Player
-    local charAddedConn = player.CharacterAdded:Connect(function(newChar)
-        task.spawn(ApplyHighlight, player, newChar)
-    end)
+    -- ==================== MAIN RENDER LOOP (LIGHTWEIGHT) ====================
+    renderConnection = RunService.RenderStepped:Connect(function()
+        FOVCircle.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
 
-    table.insert(PlayerConnections[player], charAddedConn)
-end
-
--- Deteksi Player Baru Join & Player yang Ada Sekarang
-for _, player in ipairs(Players:GetPlayers()) do
-    TrackPlayer(player)
-end
-
-Players.PlayerAdded:Connect(TrackPlayer)
-
-Players.PlayerRemoving:Connect(function(player)
-    RemoveESP(player)
-    if PlayerConnections[player] then
-        for _, conn in ipairs(PlayerConnections[player]) do
-            if conn then conn:Disconnect() end
-        end
-        PlayerConnections[player] = nil
-    end
-end)
-
--- ==================== MAIN LOOP ====================
-
-renderConnection = RunService.RenderStepped:Connect(function()
-    FOVCircle.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
-
-    -- Sembunyikan/Tampilkan Semua Highlight ESP Sesuai State
-    for player, hl in pairs(ESPHighlights) do
-        if hl and hl.Parent then
-            hl.Enabled = ESPEnabled
-        end
-    end
-
-    -- Eksekusi Auto Lock
-    if AutoLockEnabled then
-        local targetPart = GetClosestTargetInCenterFOV()
-        if targetPart then
-            local currentCF = Camera.CFrame
-            local targetCF = CFrame.new(currentCF.Position, targetPart.Position)
-            
-            if InstantLock then
-                Camera.CFrame = targetCF
-            else
-                Camera.CFrame = currentCF:Lerp(targetCF, 0.25)
+        -- Hanya memproses AutoLock jika diaktifkan (Sangat Ringan)
+        if AutoLockEnabled then
+            local targetPart = GetClosestTargetInCenterFOV()
+            if targetPart then
+                local currentCF = Camera.CFrame
+                local targetCF = CFrame.new(currentCF.Position, targetPart.Position)
+                
+                if InstantLock then
+                    Camera.CFrame = targetCF
+                else
+                    Camera.CFrame = currentCF:Lerp(targetCF, 0.25)
+                end
             end
         end
-    end
+    end)
+end
+
+-- Button Listeners Menu Bahasa
+BtnID.MouseButton1Click:Connect(function()
+    LoadMainScript("ID")
+end)
+
+BtnEN.MouseButton1Click:Connect(function()
+    LoadMainScript("EN")
 end)
