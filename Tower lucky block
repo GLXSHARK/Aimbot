@@ -534,7 +534,7 @@ end)
 HealthBtn.MouseButton1Click:Connect(function()
     if targetPlayerName ~= "" then
         sendCommand("/health " .. targetPlayerName .. " 1")
-        SendNotification("Health", "Chat: /health " .. targetPlayerName .. " 1", Color3.fromRGB(230, 126, 34))
+        SendNotification("Health 1", "Chat: /health " .. targetPlayerName .. " 1", Color3.fromRGB(230, 126, 34))
     else
         SendNotification("Error", "Tidak ada target!", Color3.fromRGB(239, 35, 60))
     end
@@ -542,8 +542,8 @@ end)
 
 CharBtn.MouseButton1Click:Connect(function()
     if targetPlayerName ~= "" then
-        sendCommand("/char " .. targetPlayerName .. " GaLaXy")
-        SendNotification("Char", "Chat: /char " .. targetPlayerName .. " GaLaXy", Color3.fromRGB(52, 152, 219))
+        sendCommand("/char " .. targetPlayerName .. " GaLaXy_BIMA2009")
+        SendNotification("Char", "Chat: /char " .. targetPlayerName .. " GaLaXy_BIMA2009", Color3.fromRGB(52, 152, 219))
     else
         SendNotification("Error", "Tidak ada target!", Color3.fromRGB(239, 35, 60))
     end
@@ -560,27 +560,57 @@ end)
 
 HealthMaxBtn.MouseButton1Click:Connect(function()
     if targetPlayerName ~= "" then
-        sendCommand("/health " .. targetPlayerName .. " inf")
-        SendNotification("Health Max", "Chat: /health " .. targetPlayerName .. " inf", Color3.fromRGB(211, 84, 0))
+        sendCommand("/health " .. targetPlayerName .. " 9999999999")
+        SendNotification("Health Max", "Chat: /health " .. targetPlayerName .. " 9999999999", Color3.fromRGB(211, 84, 0))
     else
         SendNotification("Error", "Tidak ada target!", Color3.fromRGB(239, 35, 60))
     end
 end)
 
 -- ==========================================
--- 5. COMMAND CHAT INTERNAL (/refresh SENDIRI)
+-- 5. LOGIKA AUTO-USE & AUTO-GOD RESPAWN
 -- ==========================================
-LocalPlayer.Chatted:Connect(function(message)
-    if message:lower() == "/refresh" then
-        local character = LocalPlayer.Character
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            local currentCFrame = character.HumanoidRootPart.CFrame
-            LocalPlayer.CharacterAdded:Wait()
-            task.wait(0.1)
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = currentCFrame
+local function useAllItemsOnce()
+    local character = LocalPlayer.Character
+    if not character then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    
+    if humanoid and backpack and humanoid.Health > 0 then
+        for _, item in ipairs(backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                humanoid:EquipTool(item)
+                task.wait(0.1)
+                item:Activate()
+                task.wait(0.2)
             end
         end
-        LocalPlayer:LoadCharacter()
+        for _, item in ipairs(character:GetChildren()) do
+            if item:IsA("Tool") then 
+                item:Activate()
+                task.wait(0.2) 
+            end
+        end
+    end
+end
+
+-- Event Saat Respawn
+LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+    task.wait(1.5)
+    
+    if autoUseEnabled then
+        SendNotification("Auto Use", "Menggunakan item (1x)...", Color3.fromRGB(76, 175, 80))
+        useAllItemsOnce()
+    end
+    
+    if autoGodEnabled then
+        SendNotification("Auto God Mode", "Mengaktifkan God Mode...", Color3.fromRGB(52, 152, 219))
+        task.spawn(function()
+            sendCommand("/God me")
+            task.wait(0.3)
+            sendCommand("/ff")
+            task.wait(0.3)
+            sendCommand("/health me 999999")
+        end)
     end
 end)
