@@ -1,5 +1,4 @@
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local TextChatService = game:GetService("TextChatService")
@@ -10,6 +9,12 @@ local autoUseEnabled = false
 local autoGodEnabled = false
 local isMinimized = false
 local targetPlayerName = ""
+
+-- VARIABEL BARU UNTUK AUTO KILL
+local autoKillEnabled = false
+local selectedAutoKillTarget = ""
+local autoKillTargetNameLabel = nil
+local playerListFrame = nil
 
 -- ==========================================
 -- 1. PEMBUATAN UI UTAMA & TAB SYSTEM
@@ -249,7 +254,7 @@ local HealthCorner = Instance.new("UICorner")
 HealthCorner.CornerRadius = UDim.new(0, 4)
 HealthCorner.Parent = HealthBtn
 
--- TAB 3: COMMANDS 2 CONTENT (DENGAN HEALTH MAX & REFRESH)
+-- TAB 3: COMMANDS 2 CONTENT (DENGAN AUTO KILL & PILIH PLAYER)
 local Cmd2Frame = Instance.new("Frame")
 Cmd2Frame.Name = "Cmd2Frame"
 Cmd2Frame.Size = UDim2.new(1, 0, 1, 0)
@@ -312,6 +317,93 @@ HealthMaxBtn.Parent = Cmd2Frame
 local HealthMaxCorner = Instance.new("UICorner")
 HealthMaxCorner.CornerRadius = UDim.new(0, 4)
 HealthMaxCorner.Parent = HealthMaxBtn
+
+-- TOMBOL AUTO KILL & ON/OFF DI SEBELAHNYA
+local AutoKillBtn = Instance.new("TextButton")
+AutoKillBtn.Size = UDim2.new(0.68, 0, 0, 24)
+AutoKillBtn.Position = UDim2.new(0.05, 0, 0, 114)
+AutoKillBtn.BackgroundColor3 = Color3.fromRGB(142, 68, 173)
+AutoKillBtn.Text = "AUTO KILL: Pilih Target"
+AutoKillBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoKillBtn.Font = Enum.Font.GothamBold
+AutoKillBtn.TextSize = 9
+AutoKillBtn.Parent = Cmd2Frame
+
+local AutoKillCorner = Instance.new("UICorner")
+AutoKillCorner.CornerRadius = UDim.new(0, 4)
+AutoKillCorner.Parent = AutoKillBtn
+
+local AutoKillToggleBtn = Instance.new("TextButton")
+AutoKillToggleBtn.Size = UDim2.new(0.19, 0, 0, 24)
+AutoKillToggleBtn.Position = UDim2.new(0.76, 0, 0, 114)
+AutoKillToggleBtn.BackgroundColor3 = Color3.fromRGB(239, 35, 60)
+AutoKillToggleBtn.Text = "OFF"
+AutoKillToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoKillToggleBtn.Font = Enum.Font.GothamBold
+AutoKillToggleBtn.TextSize = 10
+AutoKillToggleBtn.Parent = Cmd2Frame
+
+local AutoKillToggleCorner = Instance.new("UICorner")
+AutoKillToggleCorner.CornerRadius = UDim.new(0, 4)
+AutoKillToggleCorner.Parent = AutoKillToggleBtn
+
+-- UI POPUP PILIH PLAYER SERVER UNTUK AUTO KILL
+playerListFrame = Instance.new("Frame")
+playerListFrame.Name = "PlayerListFrame"
+playerListFrame.Size = UDim2.new(0, 180, 0, 150)
+playerListFrame.Position = UDim2.new(1, 10, 0, 0)
+playerListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+playerListFrame.Visible = false
+playerListFrame.Parent = MainFrame
+
+local PlrListCorner = Instance.new("UICorner")
+PlrListCorner.CornerRadius = UDim.new(0, 6)
+PlrListCorner.Parent = playerListFrame
+
+local PlrListStroke = Instance.new("UIStroke")
+PlrListStroke.Color = Color3.fromRGB(80, 80, 100)
+PlrListStroke.Thickness = 1
+PlrListStroke.Parent = playerListFrame
+
+local PlrListTitle = Instance.new("TextLabel")
+PlrListTitle.Size = UDim2.new(1, 0, 0, 24)
+PlrListTitle.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+PlrListTitle.Text = "Pilih Target Auto Kill"
+PlrListTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlrListTitle.Font = Enum.Font.GothamBold
+PlrListTitle.TextSize = 10
+PlrListTitle.Parent = playerListFrame
+
+local PlrListTitleCorner = Instance.new("UICorner")
+PlrListTitleCorner.CornerRadius = UDim.new(0, 6)
+PlrListTitleCorner.Parent = PlrListTitle
+
+local PlrRefreshBtn = Instance.new("TextButton")
+PlrRefreshBtn.Size = UDim2.new(0, 40, 0, 20)
+PlrRefreshBtn.Position = UDim2.new(1, -45, 0, 2)
+PlrRefreshBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+PlrRefreshBtn.Text = "Refresh"
+PlrRefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlrRefreshBtn.Font = Enum.Font.GothamBold
+PlrRefreshBtn.TextSize = 8
+PlrRefreshBtn.Parent = PlrListTitle
+
+local PlrRefreshCorner = Instance.new("UICorner")
+PlrRefreshCorner.CornerRadius = UDim.new(0, 4)
+PlrRefreshCorner.Parent = PlrRefreshBtn
+
+local ScrollingPlayerList = Instance.new("ScrollingFrame")
+ScrollingPlayerList.Size = UDim2.new(1, -10, 1, -32)
+ScrollingPlayerList.Position = UDim2.new(0, 5, 0, 28)
+ScrollingPlayerList.BackgroundTransparency = 1
+ScrollingPlayerList.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollingPlayerList.ScrollBarThickness = 4
+ScrollingPlayerList.Parent = playerListFrame
+
+local PlrListLayout = Instance.new("UIListLayout")
+PlrListLayout.Parent = ScrollingPlayerList
+PlrListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+PlrListLayout.Padding = UDim.new(0, 4)
 
 -- Container Notifikasi
 local NotifContainer = Instance.new("Frame")
@@ -434,12 +526,13 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy(); autoUseEnabled = false; autoGodEnabled = false end)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy(); autoUseEnabled = false; autoGodEnabled = false; autoKillEnabled = false end)
 MinBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     TabBar.Visible = not isMinimized
     ContentContainer.Visible = not isMinimized
     MainFrame.Size = isMinimized and UDim2.new(0, 200, 0, 26) or UDim2.new(0, 200, 0, 210)
+    playerListFrame.Visible = false
 end)
 
 ToggleUseBtn.MouseButton1Click:Connect(function()
@@ -564,6 +657,72 @@ HealthMaxBtn.MouseButton1Click:Connect(function()
         SendNotification("Health Max", "Chat: /health " .. targetPlayerName .. " 9999999999", Color3.fromRGB(211, 84, 0))
     else
         SendNotification("Error", "Tidak ada target!", Color3.fromRGB(239, 35, 60))
+    end
+end)
+
+-- ==========================================
+-- LOGIKA PEMBUATAN LIST PLAYER & AUTO KILL
+-- ==========================================
+local function populatePlayerList()
+    for _, child in ipairs(ScrollingPlayerList:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    local players = Players:GetPlayers()
+    ScrollingPlayerList.CanvasSize = UDim2.new(0, 0, 0, #players * 24)
+    
+    for _, player in ipairs(players) do
+        local pBtn = Instance.new("TextButton")
+        pBtn.Size = UDim2.new(1, 0, 0, 20)
+        pBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        pBtn.Text = player.Name
+        pBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
+        pBtn.Font = Enum.Font.Gotham
+        pBtn.TextSize = 9
+        pBtn.Parent = ScrollingPlayerList
+        
+        local pCorner = Instance.new("UICorner")
+        pCorner.CornerRadius = UDim.new(0, 4)
+        pCorner.Parent = pBtn
+        
+        pBtn.MouseButton1Click:Connect(function()
+            selectedAutoKillTarget = player.Name
+            AutoKillBtn.Text = "Target: " .. selectedAutoKillTarget
+            playerListFrame.Visible = false
+            SendNotification("Auto Kill Target", "auto kill " .. selectedAutoKillTarget, Color3.fromRGB(142, 68, 173))
+        end)
+    end
+end
+
+AutoKillBtn.MouseButton1Click:Connect(function()
+    playerListFrame.Visible = not playerListFrame.Visible
+    if playerListFrame.Visible then
+        populatePlayerList()
+    end
+end)
+
+PlrRefreshBtn.MouseButton1Click:Connect(function()
+    populatePlayerList()
+end)
+
+AutoKillToggleBtn.MouseButton1Click:Connect(function()
+    autoKillEnabled = not autoKillEnabled
+    AutoKillToggleBtn.Text = autoKillEnabled and "ON" or "OFF"
+    TweenService:Create(AutoKillToggleBtn, TweenInfo.new(0.3), {BackgroundColor3 = autoKillEnabled and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(239, 35, 60)}):Play()
+end)
+
+-- Loop Auto Kill Setiap 1 Detik
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if autoKillEnabled and selectedAutoKillTarget ~= "" then
+            local targetPlayer = Players:FindFirstChild(selectedAutoKillTarget)
+            if targetPlayer then
+                sendCommand("/kill " .. selectedAutoKillTarget)
+            end
+        end
     end
 end)
 
