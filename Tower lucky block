@@ -713,10 +713,10 @@ AutoKillToggleBtn.MouseButton1Click:Connect(function()
     TweenService:Create(AutoKillToggleBtn, TweenInfo.new(0.3), {BackgroundColor3 = autoKillEnabled and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(239, 35, 60)}):Play()
 end)
 
--- Loop Auto Kill Setiap 1 Detik
+-- Loop Auto Kill Setiap 3 Detik
 task.spawn(function()
     while true do
-        task.wait(1)
+        task.wait(3)
         if autoKillEnabled and selectedAutoKillTarget ~= "" then
             local targetPlayer = Players:FindFirstChild(selectedAutoKillTarget)
             if targetPlayer then
