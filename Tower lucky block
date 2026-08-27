@@ -1,4 +1,5 @@
-local Players = game:GetService("Players")local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local TextChatService = game:GetService("TextChatService")
@@ -16,13 +17,18 @@ local selectedAutoKillTarget = ""
 local autoKillTargetNameLabel = nil
 local playerListFrame = nil
 
+-- VARIABEL BARU UNTUK AUTO GOD PLAYER
+local autoGodPlayerEnabled = false
+local selectedAutoGodTarget = ""
+local godPlayerListFrame = nil
+local godPlayerConnection = nil
+
 -- ==========================================
 -- 1. PEMBUATAN UI UTAMA & TAB SYSTEM
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AestheticHubTabbed"
 ScreenGui.ResetOnSpawn = false 
-
 local success = pcall(function() ScreenGui.Parent = CoreGui end)
 if not success then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
@@ -176,6 +182,33 @@ local GodCorner = Instance.new("UICorner")
 GodCorner.CornerRadius = UDim.new(0, 5)
 GodCorner.Parent = ToggleGodBtn
 
+-- FITUR BARU: AUTO GOD PLAYER DI BAWAH AUTO GOD MODE
+local AutoGodPlayerBtn = Instance.new("TextButton")
+AutoGodPlayerBtn.Size = UDim2.new(0.68, 0, 0, 32)
+AutoGodPlayerBtn.Position = UDim2.new(0.05, 0, 0, 92)
+AutoGodPlayerBtn.BackgroundColor3 = Color3.fromRGB(142, 68, 173)
+AutoGodPlayerBtn.Text = "AUTO GOD PLR: Pilih Target"
+AutoGodPlayerBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoGodPlayerBtn.Font = Enum.Font.GothamBold
+AutoGodPlayerBtn.TextSize = 9
+AutoGodPlayerBtn.Parent = AutoFrame
+local AutoGodPlayerCorner = Instance.new("UICorner")
+AutoGodPlayerCorner.CornerRadius = UDim.new(0, 5)
+AutoGodPlayerCorner.Parent = AutoGodPlayerBtn
+
+local AutoGodPlayerToggleBtn = Instance.new("TextButton")
+AutoGodPlayerToggleBtn.Size = UDim2.new(0.19, 0, 0, 32)
+AutoGodPlayerToggleBtn.Position = UDim2.new(0.76, 0, 0, 92)
+AutoGodPlayerToggleBtn.BackgroundColor3 = Color3.fromRGB(239, 35, 60)
+AutoGodPlayerToggleBtn.Text = "OFF"
+AutoGodPlayerToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoGodPlayerToggleBtn.Font = Enum.Font.GothamBold
+AutoGodPlayerToggleBtn.TextSize = 10
+AutoGodPlayerToggleBtn.Parent = AutoFrame
+local AutoGodPlayerToggleCorner = Instance.new("UICorner")
+AutoGodPlayerToggleCorner.CornerRadius = UDim.new(0, 5)
+AutoGodPlayerToggleCorner.Parent = AutoGodPlayerToggleBtn
+
 -- TAB 2: COMMANDS 1 CONTENT
 local CmdFrame = Instance.new("Frame")
 CmdFrame.Name = "CmdFrame"
@@ -193,7 +226,6 @@ TargetLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 TargetLabel.Font = Enum.Font.Gotham
 TargetLabel.TextSize = 10
 TargetLabel.Parent = CmdFrame
-
 local TargetCorner = Instance.new("UICorner")
 TargetCorner.CornerRadius = UDim.new(0, 4)
 TargetCorner.Parent = TargetLabel
@@ -207,7 +239,6 @@ FlingBtn.TextColor3 = Color3.fromRGB(30, 30, 30)
 FlingBtn.Font = Enum.Font.GothamBold
 FlingBtn.TextSize = 10
 FlingBtn.Parent = CmdFrame
-
 local FlingCorner = Instance.new("UICorner")
 FlingCorner.CornerRadius = UDim.new(0, 4)
 FlingCorner.Parent = FlingBtn
@@ -221,7 +252,6 @@ KillBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 KillBtn.Font = Enum.Font.GothamBold
 KillBtn.TextSize = 10
 KillBtn.Parent = CmdFrame
-
 local KillCorner = Instance.new("UICorner")
 KillCorner.CornerRadius = UDim.new(0, 4)
 KillCorner.Parent = KillBtn
@@ -235,7 +265,6 @@ BringBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 BringBtn.Font = Enum.Font.GothamBold
 BringBtn.TextSize = 10
 BringBtn.Parent = CmdFrame
-
 local BringCorner = Instance.new("UICorner")
 BringCorner.CornerRadius = UDim.new(0, 4)
 BringCorner.Parent = BringBtn
@@ -249,7 +278,6 @@ HealthBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 HealthBtn.Font = Enum.Font.GothamBold
 HealthBtn.TextSize = 10
 HealthBtn.Parent = CmdFrame
-
 local HealthCorner = Instance.new("UICorner")
 HealthCorner.CornerRadius = UDim.new(0, 4)
 HealthCorner.Parent = HealthBtn
@@ -271,7 +299,6 @@ TargetLabel2.TextColor3 = Color3.fromRGB(200, 200, 200)
 TargetLabel2.Font = Enum.Font.Gotham
 TargetLabel2.TextSize = 10
 TargetLabel2.Parent = Cmd2Frame
-
 local TargetCorner2 = Instance.new("UICorner")
 TargetCorner2.CornerRadius = UDim.new(0, 4)
 TargetCorner2.Parent = TargetLabel2
@@ -285,7 +312,6 @@ CharBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CharBtn.Font = Enum.Font.GothamBold
 CharBtn.TextSize = 10
 CharBtn.Parent = Cmd2Frame
-
 local CharCorner = Instance.new("UICorner")
 CharCorner.CornerRadius = UDim.new(0, 4)
 CharCorner.Parent = CharBtn
@@ -299,7 +325,6 @@ RefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 RefreshBtn.Font = Enum.Font.GothamBold
 RefreshBtn.TextSize = 10
 RefreshBtn.Parent = Cmd2Frame
-
 local RefreshCorner = Instance.new("UICorner")
 RefreshCorner.CornerRadius = UDim.new(0, 4)
 RefreshCorner.Parent = RefreshBtn
@@ -313,7 +338,6 @@ HealthMaxBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 HealthMaxBtn.Font = Enum.Font.GothamBold
 HealthMaxBtn.TextSize = 10
 HealthMaxBtn.Parent = Cmd2Frame
-
 local HealthMaxCorner = Instance.new("UICorner")
 HealthMaxCorner.CornerRadius = UDim.new(0, 4)
 HealthMaxCorner.Parent = HealthMaxBtn
@@ -328,7 +352,6 @@ AutoKillBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoKillBtn.Font = Enum.Font.GothamBold
 AutoKillBtn.TextSize = 9
 AutoKillBtn.Parent = Cmd2Frame
-
 local AutoKillCorner = Instance.new("UICorner")
 AutoKillCorner.CornerRadius = UDim.new(0, 4)
 AutoKillCorner.Parent = AutoKillBtn
@@ -342,7 +365,6 @@ AutoKillToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoKillToggleBtn.Font = Enum.Font.GothamBold
 AutoKillToggleBtn.TextSize = 10
 AutoKillToggleBtn.Parent = Cmd2Frame
-
 local AutoKillToggleCorner = Instance.new("UICorner")
 AutoKillToggleCorner.CornerRadius = UDim.new(0, 4)
 AutoKillToggleCorner.Parent = AutoKillToggleBtn
@@ -355,16 +377,13 @@ playerListFrame.Position = UDim2.new(1, 10, 0, 0)
 playerListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
 playerListFrame.Visible = false
 playerListFrame.Parent = MainFrame
-
 local PlrListCorner = Instance.new("UICorner")
 PlrListCorner.CornerRadius = UDim.new(0, 6)
 PlrListCorner.Parent = playerListFrame
-
 local PlrListStroke = Instance.new("UIStroke")
 PlrListStroke.Color = Color3.fromRGB(80, 80, 100)
 PlrListStroke.Thickness = 1
 PlrListStroke.Parent = playerListFrame
-
 local PlrListTitle = Instance.new("TextLabel")
 PlrListTitle.Size = UDim2.new(1, 0, 0, 24)
 PlrListTitle.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
@@ -373,11 +392,9 @@ PlrListTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlrListTitle.Font = Enum.Font.GothamBold
 PlrListTitle.TextSize = 10
 PlrListTitle.Parent = playerListFrame
-
 local PlrListTitleCorner = Instance.new("UICorner")
 PlrListTitleCorner.CornerRadius = UDim.new(0, 6)
 PlrListTitleCorner.Parent = PlrListTitle
-
 local PlrRefreshBtn = Instance.new("TextButton")
 PlrRefreshBtn.Size = UDim2.new(0, 40, 0, 20)
 PlrRefreshBtn.Position = UDim2.new(1, -45, 0, 2)
@@ -387,11 +404,9 @@ PlrRefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlrRefreshBtn.Font = Enum.Font.GothamBold
 PlrRefreshBtn.TextSize = 8
 PlrRefreshBtn.Parent = PlrListTitle
-
 local PlrRefreshCorner = Instance.new("UICorner")
 PlrRefreshCorner.CornerRadius = UDim.new(0, 4)
 PlrRefreshCorner.Parent = PlrRefreshBtn
-
 local ScrollingPlayerList = Instance.new("ScrollingFrame")
 ScrollingPlayerList.Size = UDim2.new(1, -10, 1, -32)
 ScrollingPlayerList.Position = UDim2.new(0, 5, 0, 28)
@@ -399,11 +414,61 @@ ScrollingPlayerList.BackgroundTransparency = 1
 ScrollingPlayerList.CanvasSize = UDim2.new(0, 0, 0, 0)
 ScrollingPlayerList.ScrollBarThickness = 4
 ScrollingPlayerList.Parent = playerListFrame
-
 local PlrListLayout = Instance.new("UIListLayout")
 PlrListLayout.Parent = ScrollingPlayerList
 PlrListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 PlrListLayout.Padding = UDim.new(0, 4)
+
+-- UI POPUP PILIH PLAYER SERVER UNTUK AUTO GOD PLAYER
+godPlayerListFrame = Instance.new("Frame")
+godPlayerListFrame.Name = "GodPlayerListFrame"
+godPlayerListFrame.Size = UDim2.new(0, 180, 0, 150)
+godPlayerListFrame.Position = UDim2.new(1, 10, 0, 0)
+godPlayerListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+godPlayerListFrame.Visible = false
+godPlayerListFrame.Parent = MainFrame
+local GodPlrListCorner = Instance.new("UICorner")
+GodPlrListCorner.CornerRadius = UDim.new(0, 6)
+GodPlrListCorner.Parent = godPlayerListFrame
+local GodPlrListStroke = Instance.new("UIStroke")
+GodPlrListStroke.Color = Color3.fromRGB(80, 80, 100)
+GodPlrListStroke.Thickness = 1
+GodPlrListStroke.Parent = godPlayerListFrame
+local GodPlrListTitle = Instance.new("TextLabel")
+GodPlrListTitle.Size = UDim2.new(1, 0, 0, 24)
+GodPlrListTitle.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+GodPlrListTitle.Text = "Pilih Target Auto God"
+GodPlrListTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+GodPlrListTitle.Font = Enum.Font.GothamBold
+GodPlrListTitle.TextSize = 10
+GodPlrListTitle.Parent = godPlayerListFrame
+local GodPlrListTitleCorner = Instance.new("UICorner")
+GodPlrListTitleCorner.CornerRadius = UDim.new(0, 6)
+GodPlrListTitleCorner.Parent = GodPlrListTitle
+local GodPlrRefreshBtn = Instance.new("TextButton")
+GodPlrRefreshBtn.Size = UDim2.new(0, 40, 0, 20)
+GodPlrRefreshBtn.Position = UDim2.new(1, -45, 0, 2)
+GodPlrRefreshBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+GodPlrRefreshBtn.Text = "Refresh"
+GodPlrRefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+GodPlrRefreshBtn.Font = Enum.Font.GothamBold
+GodPlrRefreshBtn.TextSize = 8
+GodPlrRefreshBtn.Parent = GodPlrListTitle
+local GodPlrRefreshCorner = Instance.new("UICorner")
+GodPlrRefreshCorner.CornerRadius = UDim.new(0, 4)
+GodPlrRefreshCorner.Parent = GodPlrRefreshBtn
+local GodScrollingPlayerList = Instance.new("ScrollingFrame")
+GodScrollingPlayerList.Size = UDim2.new(1, -10, 1, -32)
+GodScrollingPlayerList.Position = UDim2.new(0, 5, 0, 28)
+GodScrollingPlayerList.BackgroundTransparency = 1
+GodScrollingPlayerList.CanvasSize = UDim2.new(0, 0, 0, 0)
+GodScrollingPlayerList.ScrollBarThickness = 4
+GodScrollingPlayerList.Parent = godPlayerListFrame
+local GodPlrListLayout = Instance.new("UIListLayout")
+GodPlrListLayout.Parent = GodScrollingPlayerList
+GodPlrListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+GodPlrListLayout.Padding = UDim.new(0, 4)
+
 
 -- Container Notifikasi
 local NotifContainer = Instance.new("Frame")
@@ -412,7 +477,6 @@ NotifContainer.Size = UDim2.new(0, 230, 1, 0)
 NotifContainer.Position = UDim2.new(1, -240, 0, -20)
 NotifContainer.BackgroundTransparency = 1
 NotifContainer.Parent = ScreenGui
-
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = NotifContainer
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -450,11 +514,11 @@ local function SendNotification(titleText, descText, color)
     notif.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     notif.BackgroundTransparency = 1
     notif.Parent = NotifContainer
-
+    
     local nCorner = Instance.new("UICorner")
     nCorner.CornerRadius = UDim.new(0, 6)
     nCorner.Parent = notif
-
+    
     local sideBar = Instance.new("Frame")
     sideBar.Size = UDim2.new(0, 4, 1, 0)
     sideBar.BackgroundColor3 = color
@@ -465,7 +529,7 @@ local function SendNotification(titleText, descText, color)
     local sbCorner = Instance.new("UICorner")
     sbCorner.CornerRadius = UDim.new(0, 6)
     sbCorner.Parent = sideBar
-
+    
     local nTitle = Instance.new("TextLabel")
     nTitle.Size = UDim2.new(1, -15, 0, 18)
     nTitle.Position = UDim2.new(0, 12, 0, 8)
@@ -477,7 +541,7 @@ local function SendNotification(titleText, descText, color)
     nTitle.TextXAlignment = Enum.TextXAlignment.Left
     nTitle.TextTransparency = 1
     nTitle.Parent = notif
-
+    
     local nDesc = Instance.new("TextLabel")
     nDesc.Size = UDim2.new(1, -15, 0, 18)
     nDesc.Position = UDim2.new(0, 12, 0, 24)
@@ -489,12 +553,12 @@ local function SendNotification(titleText, descText, color)
     nDesc.TextXAlignment = Enum.TextXAlignment.Left
     nDesc.TextTransparency = 1
     nDesc.Parent = notif
-
+    
     TweenService:Create(notif, TweenInfo.new(0.4), {BackgroundTransparency = 0.1}):Play()
     TweenService:Create(sideBar, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
     TweenService:Create(nTitle, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
     TweenService:Create(nDesc, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
-
+    
     task.delay(3.5, function()
         TweenService:Create(notif, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
         TweenService:Create(sideBar, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
@@ -525,14 +589,14 @@ UserInputService.InputChanged:Connect(function(input)
         MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
-
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy(); autoUseEnabled = false; autoGodEnabled = false; autoKillEnabled = false end)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy(); autoUseEnabled = false; autoGodEnabled = false; autoKillEnabled = false; autoGodPlayerEnabled = false end)
 MinBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     TabBar.Visible = not isMinimized
     ContentContainer.Visible = not isMinimized
     MainFrame.Size = isMinimized and UDim2.new(0, 200, 0, 26) or UDim2.new(0, 200, 0, 210)
     playerListFrame.Visible = false
+    godPlayerListFrame.Visible = false
 end)
 
 ToggleUseBtn.MouseButton1Click:Connect(function()
@@ -723,6 +787,91 @@ task.spawn(function()
                 sendCommand("/kill " .. selectedAutoKillTarget)
             end
         end
+    end
+end)
+
+-- ==========================================
+-- LOGIKA AUTO GOD PLAYER
+-- ==========================================
+local function executeGodOnTarget(targetName)
+    if autoGodPlayerEnabled and targetName ~= "" then
+        task.spawn(function()
+            sendCommand("/god " .. targetName)
+            task.wait(0.3)
+            sendCommand("/ff " .. targetName)
+            task.wait(0.3)
+            sendCommand("/health " .. targetName .. " 9999999")
+        end)
+    end
+end
+
+local function setupGodConnection(targetName)
+    if godPlayerConnection then
+        godPlayerConnection:Disconnect()
+        godPlayerConnection = nil
+    end
+    local targetPlr = Players:FindFirstChild(targetName)
+    if targetPlr then
+        godPlayerConnection = targetPlr.CharacterAdded:Connect(function()
+            task.wait(1.5)
+            executeGodOnTarget(targetName)
+        end)
+    end
+end
+
+local function populateGodPlayerList()
+    for _, child in ipairs(GodScrollingPlayerList:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    local players = Players:GetPlayers()
+    GodScrollingPlayerList.CanvasSize = UDim2.new(0, 0, 0, #players * 24)
+    
+    for _, player in ipairs(players) do
+        local pBtn = Instance.new("TextButton")
+        pBtn.Size = UDim2.new(1, 0, 0, 20)
+        pBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        pBtn.Text = player.Name
+        pBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
+        pBtn.Font = Enum.Font.Gotham
+        pBtn.TextSize = 9
+        pBtn.Parent = GodScrollingPlayerList
+        
+        local pCorner = Instance.new("UICorner")
+        pCorner.CornerRadius = UDim.new(0, 4)
+        pCorner.Parent = pBtn
+        
+        pBtn.MouseButton1Click:Connect(function()
+            selectedAutoGodTarget = player.Name
+            AutoGodPlayerBtn.Text = "Target: " .. selectedAutoGodTarget
+            godPlayerListFrame.Visible = false
+            setupGodConnection(selectedAutoGodTarget)
+            SendNotification("Auto God Target", "Target: " .. selectedAutoGodTarget, Color3.fromRGB(142, 68, 173))
+        end)
+    end
+end
+
+AutoGodPlayerBtn.MouseButton1Click:Connect(function()
+    godPlayerListFrame.Visible = not godPlayerListFrame.Visible
+    if godPlayerListFrame.Visible then
+        populateGodPlayerList()
+    end
+end)
+
+GodPlrRefreshBtn.MouseButton1Click:Connect(function()
+    populateGodPlayerList()
+end)
+
+AutoGodPlayerToggleBtn.MouseButton1Click:Connect(function()
+    autoGodPlayerEnabled = not autoGodPlayerEnabled
+    AutoGodPlayerToggleBtn.Text = autoGodPlayerEnabled and "ON" or "OFF"
+    TweenService:Create(AutoGodPlayerToggleBtn, TweenInfo.new(0.3), {BackgroundColor3 = autoGodPlayerEnabled and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(239, 35, 60)}):Play()
+    
+    -- Eksekusi instan jika sudah di-ON-kan dan sudah ada target player
+    if autoGodPlayerEnabled and selectedAutoGodTarget ~= "" then
+        executeGodOnTarget(selectedAutoGodTarget)
     end
 end)
 
