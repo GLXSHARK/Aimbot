@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local TeamsService = game:GetService("Teams")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
@@ -535,5 +536,4 @@ local function LoadMainScript(langCode)
     FOVLabel.TextColor3 = Color3.fromRGB(205, 214, 244)
     FOVLabel.Font = Enum.Font.GothamMedium
     FOVLabel.TextSize = 10
-    FOVLabel.TextXAlignment = Enum.TextXAlignment.Left
-    FOVLabel.BackgroundTrans
+    FOVLabel.TextXAlignment = Enum.Te
