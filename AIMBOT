@@ -1,4 +1,4 @@
--- [[ GLX AIMBOT KEYLESS - LIGHTWEIGHT & MANUAL FLOATING ESP ]] --
+-- [[ GLX AIMBOT KEYLESS - LIGHTWEIGHT & UNIVERSAL ESP/AIMBOT ]] --
 
 if getgenv().AutoLockCleanup then
     pcall(getgenv().AutoLockCleanup)
@@ -40,6 +40,8 @@ local Translations = {
         TargetBody = "Target Lock: BADAN",
         ModeHard = "Mode: HARD (INSTANT)",
         ModeSmooth = "Mode: SMOOTH",
+        TeamOn = "Cek Tim: AKTIF",
+        TeamOff = "Cek Tim: NONAKTIF (SEMUA TARGET)",
         ESPOn = "ESP Body: AKTIF",
         ESPOff = "ESP Body: NONAKTIF",
         WallOn = "Cek Tembok: AKTIF",
@@ -71,6 +73,8 @@ local Translations = {
         TargetBody = "Target Lock: BODY",
         ModeHard = "Lock Mode: HARD (INSTANT)",
         ModeSmooth = "Lock Mode: SMOOTH",
+        TeamOn = "Team Check: ON",
+        TeamOff = "Team Check: OFF (ALL TARGETS)",
         ESPOn = "ESP Body: ON",
         ESPOff = "ESP Body: OFF",
         WallOn = "Wall Check: ON",
@@ -165,17 +169,19 @@ local function LoadMainScript(langCode)
     local AutoLockEnabled = false
     local LockHead = false
     local InstantLock = true 
+    local TeamCheckEnabled = true
     local ESPEnabled = false
     local WallCheckEnabled = true
     local ShowFOV = true
     local FOVRadius = 120
     
-    -- Floating Visibility States (Default Hidden)
+    -- Floating Visibility States
     local FloatLockVisible = false
     local FloatESPVisible = false
     local FloatWallVisible = false
 
     local ESPHighlights = {}
+    local RenderConnection = nil
 
     -- Raycast Setup
     local raycastParams = RaycastParams.new()
@@ -314,7 +320,6 @@ local function LoadMainScript(langCode)
     FloatWallStroke.Color = Color3.fromRGB(30, 30, 46)
     FloatWallStroke.Parent = FloatWallBtn
 
-    -- Enable Dragging for Floating Buttons
     MakeDraggable(FloatingContainer, FloatingContainer)
     MakeDraggable(FloatingContainer, FloatLockBtn)
     MakeDraggable(FloatingContainer, FloatESPBtn)
@@ -323,8 +328,8 @@ local function LoadMainScript(langCode)
     -- ==================== LARGER MAIN PANEL WITH SIDEBAR ====================
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 460, 0, 270)
-    MainFrame.Position = UDim2.new(0.5, -230, 0.3, -135)
+    MainFrame.Size = UDim2.new(0, 460, 0, 290)
+    MainFrame.Position = UDim2.new(0.5, -230, 0.3, -145)
     MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 37)
     MainFrame.BorderSizePixel = 0
     MainFrame.ClipsDescendants = true
@@ -389,7 +394,7 @@ local function LoadMainScript(langCode)
 
     MakeDraggable(MainFrame, TopBar)
 
-    -- Sidebar Left Container
+    -- Sidebar
     local Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
     Sidebar.Size = UDim2.new(0, 130, 1, -38)
@@ -412,7 +417,7 @@ local function LoadMainScript(langCode)
     SidebarPadding.PaddingTop = UDim.new(0, 8)
     SidebarPadding.Parent = Sidebar
 
-    -- Content Right Container
+    -- Content Container
     local ContentArea = Instance.new("Frame")
     ContentArea.Name = "ContentArea"
     ContentArea.Size = UDim2.new(1, -150, 1, -38)
@@ -420,9 +425,8 @@ local function LoadMainScript(langCode)
     ContentArea.BackgroundTransparency = 1
     ContentArea.Parent = MainFrame
 
-    -- Tab Pages Container
+    -- Pages
     local Pages = {}
-
     local function CreateTabPage(name)
         local page = Instance.new("Frame")
         page.Name = name
@@ -446,7 +450,6 @@ local function LoadMainScript(langCode)
     local PageWall = CreateTabPage("Wall")
     local PageFOV = CreateTabPage("FOV")
 
-    -- Sidebar Buttons Creator
     local TabButtons = {}
     local function CreateTabButton(name, labelText, targetPage)
         local btn = Instance.new("TextButton")
@@ -482,12 +485,10 @@ local function LoadMainScript(langCode)
     local BtnTabWall = CreateTabButton("Wall", Lang.TabWall, PageWall)
     local BtnTabFOV = CreateTabButton("FOV", Lang.TabFOV, PageFOV)
 
-    -- Default Active Tab
     PageAimbot.Visible = true
     BtnTabAimbot.BackgroundColor3 = Color3.fromRGB(137, 180, 250)
     BtnTabAimbot.TextColor3 = Color3.fromRGB(30, 30, 46)
 
-    -- UI Button Creator Helper for Pages
     local function CreateOptionButton(parentPage, text, color)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, 0, 0, 32)
@@ -504,23 +505,20 @@ local function LoadMainScript(langCode)
         return btn
     end
 
-    -- ==================== TAB CONTENT CONTROLS ====================
-
-    -- 🎯 AIMBOT TAB
+    -- Controls
     local LockToggle = CreateOptionButton(PageAimbot, Lang.LockOff, Color3.fromRGB(243, 139, 168))
     local TargetToggle = CreateOptionButton(PageAimbot, Lang.TargetBody, Color3.fromRGB(137, 180, 250))
     local ModeToggle = CreateOptionButton(PageAimbot, Lang.ModeHard, Color3.fromRGB(166, 227, 161))
+    local TeamToggle = CreateOptionButton(PageAimbot, Lang.TeamOn, Color3.fromRGB(166, 227, 161))
     local FloatLockToggleBtn = CreateOptionButton(PageAimbot, Lang.FloatLockBtnToggle, Color3.fromRGB(205, 214, 244))
 
-    -- 👁️ ESP TAB
     local ESPToggle = CreateOptionButton(PageESP, Lang.ESPOff, Color3.fromRGB(243, 139, 168))
     local FloatESPToggleBtn = CreateOptionButton(PageESP, Lang.FloatESPBtnToggle, Color3.fromRGB(205, 214, 244))
 
-    -- 🧱 WALL CHECK TAB
     local WallToggle = CreateOptionButton(PageWall, Lang.WallOn, Color3.fromRGB(166, 227, 161))
     local FloatWallToggleBtn = CreateOptionButton(PageWall, Lang.FloatWallBtnToggle, Color3.fromRGB(205, 214, 244))
 
-    -- ⚙️ FOV TAB
+    -- FOV Frame Controls
     local FOVFrame = Instance.new("Frame")
     FOVFrame.Size = UDim2.new(1, 0, 0, 32)
     FOVFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 46)
@@ -531,309 +529,11 @@ local function LoadMainScript(langCode)
     FOVFrameCorner.Parent = FOVFrame
 
     local FOVLabel = Instance.new("TextLabel")
-    FOVLabel.Size = UDim2.new(0.6, 0, 1, 0)
+    FOVLabel.Size = UDim2.new(0.5, 0, 1, 0)
     FOVLabel.Position = UDim2.new(0, 8, 0, 0)
-    FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
+    FOVLabel.Text = "FOV Radius: " .. tostring(FOVRadius)
     FOVLabel.TextColor3 = Color3.fromRGB(205, 214, 244)
     FOVLabel.Font = Enum.Font.GothamMedium
-    FOVLabel.TextSize = 11
+    FOVLabel.TextSize = 10
     FOVLabel.TextXAlignment = Enum.TextXAlignment.Left
-    FOVLabel.BackgroundTransparency = 1
-    FOVLabel.Parent = FOVFrame
-
-    local FOVPlus = Instance.new("TextButton")
-    FOVPlus.Size = UDim2.new(0, 24, 0, 24)
-    FOVPlus.Position = UDim2.new(1, -28, 0.5, -12)
-    FOVPlus.Text = "+"
-    FOVPlus.TextColor3 = Color3.fromRGB(205, 214, 244)
-    FOVPlus.Font = Enum.Font.GothamBold
-    FOVPlus.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-    FOVPlus.Parent = FOVFrame
-
-    local FOVPlusCorner = Instance.new("UICorner")
-    FOVPlusCorner.CornerRadius = UDim.new(0, 4)
-    FOVPlusCorner.Parent = FOVPlus
-
-    local FOVMinus = Instance.new("TextButton")
-    FOVMinus.Size = UDim2.new(0, 24, 0, 24)
-    FOVMinus.Position = UDim2.new(1, -56, 0.5, -12)
-    FOVMinus.Text = "-"
-    FOVMinus.TextColor3 = Color3.fromRGB(205, 214, 244)
-    FOVMinus.Font = Enum.Font.GothamBold
-    FOVMinus.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-    FOVMinus.Parent = FOVFrame
-
-    local FOVMinusCorner = Instance.new("UICorner")
-    FOVMinusCorner.CornerRadius = UDim.new(0, 4)
-    FOVMinusCorner.Parent = FOVMinus
-
-    local FOVVisToggle = CreateOptionButton(PageFOV, Lang.FOVShow, Color3.fromRGB(166, 227, 161))
-
-    -- Color Palette
-    local ColorFrame = Instance.new("Frame")
-    ColorFrame.Size = UDim2.new(1, 0, 0, 28)
-    ColorFrame.BackgroundTransparency = 1
-    ColorFrame.Parent = PageFOV
-
-    local palette = {
-        Color3.fromRGB(137, 180, 250),
-        Color3.fromRGB(243, 139, 168),
-        Color3.fromRGB(166, 227, 161),
-        Color3.fromRGB(249, 226, 175),
-        Color3.fromRGB(203, 166, 247)
-    }
-
-    for i, col in ipairs(palette) do
-        local cBtn = Instance.new("TextButton")
-        cBtn.Size = UDim2.new(0, 22, 0, 22)
-        cBtn.Position = UDim2.new(0, (i-1)*50 + 8, 0.5, -11)
-        cBtn.Text = ""
-        cBtn.BackgroundColor3 = col
-        cBtn.Parent = ColorFrame
-
-        local cCorner = Instance.new("UICorner")
-        cCorner.CornerRadius = UDim.new(1, 0)
-        cCorner.Parent = cBtn
-
-        cBtn.MouseButton1Click:Connect(function()
-            FOVStroke.Color = col
-        end)
-    end
-
-    -- ==================== LIGHTWEIGHT MANUAL ESP LOGIC ====================
-    local function ClearAllESP()
-        for player, hl in pairs(ESPHighlights) do
-            if hl then pcall(function() hl:Destroy() end) end
-        end
-        table.clear(ESPHighlights)
-    end
-
-    local function ApplyESPToAll()
-        ClearAllESP()
-        if not ESPEnabled then return end
-
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                local char = player.Character
-                local humanoid = char:FindFirstChildOfClass("Humanoid")
-                if humanoid and humanoid.Health > 0 then
-                    local hl = Instance.new("Highlight")
-                    hl.Name = "GLX_ESP"
-                    hl.FillColor = Color3.fromRGB(203, 166, 247)
-                    hl.FillTransparency = 0.65
-                    hl.OutlineColor = Color3.fromRGB(137, 180, 250)
-                    hl.OutlineTransparency = 0.1
-                    hl.Adornee = char
-                    hl.Parent = char
-                    ESPHighlights[player] = hl
-                end
-            end
-        end
-    end
-
-    -- ==================== STATE UPDATERS ====================
-    local function UpdateLockState(state)
-        AutoLockEnabled = state
-        LockToggle.Text = AutoLockEnabled and Lang.LockOn or Lang.LockOff
-        LockToggle.TextColor3 = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-        
-        FloatLockBtn.BackgroundColor3 = AutoLockEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-        FloatLockBtn.TextColor3 = AutoLockEnabled and Color3.fromRGB(30, 30, 46) or Color3.fromRGB(255, 255, 255)
-        FloatLockBtn.Text = AutoLockEnabled and Lang.FloatLockOn or Lang.FloatLockOff
-    end
-
-    local function UpdateESPState(state)
-        ESPEnabled = state
-        ESPToggle.Text = ESPEnabled and Lang.ESPOn or Lang.ESPOff
-        ESPToggle.TextColor3 = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-        
-        FloatESPBtn.BackgroundColor3 = ESPEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-        FloatESPBtn.TextColor3 = ESPEnabled and Color3.fromRGB(30, 30, 46) or Color3.fromRGB(255, 255, 255)
-        FloatESPBtn.Text = ESPEnabled and Lang.FloatESPOn or Lang.FloatESPOff
-
-        -- Manual Render Trigger (Zero Background Overhead)
-        ApplyESPToAll()
-    end
-
-    local function UpdateWallState(state)
-        WallCheckEnabled = state
-        WallToggle.Text = WallCheckEnabled and Lang.WallOn or Lang.WallOff
-        WallToggle.TextColor3 = WallCheckEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(249, 226, 175)
-
-        FloatWallBtn.BackgroundColor3 = WallCheckEnabled and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(249, 226, 175)
-        FloatWallBtn.TextColor3 = Color3.fromRGB(30, 30, 46)
-        FloatWallBtn.Text = WallCheckEnabled and Lang.FloatWallOn or Lang.FloatWallOff
-    end
-
-    -- Initial Sync
-    UpdateLockState(AutoLockEnabled)
-    UpdateESPState(ESPEnabled)
-    UpdateWallState(WallCheckEnabled)
-
-    -- Click Events Feature Toggles
-    LockToggle.MouseButton1Click:Connect(function() UpdateLockState(not AutoLockEnabled) end)
-    FloatLockBtn.MouseButton1Click:Connect(function() UpdateLockState(not AutoLockEnabled) end)
-
-    ESPToggle.MouseButton1Click:Connect(function() UpdateESPState(not ESPEnabled) end)
-    FloatESPBtn.MouseButton1Click:Connect(function() UpdateESPState(not ESPEnabled) end)
-
-    WallToggle.MouseButton1Click:Connect(function() UpdateWallState(not WallCheckEnabled) end)
-    FloatWallBtn.MouseButton1Click:Connect(function() UpdateWallState(not WallCheckEnabled) end)
-
-    -- Click Events Floating Button Display Toggles
-    FloatLockToggleBtn.MouseButton1Click:Connect(function()
-        FloatLockVisible = not FloatLockVisible
-        FloatLockBtn.Visible = FloatLockVisible
-        FloatLockToggleBtn.Text = FloatLockVisible and Lang.FloatLockBtnToggleOn or Lang.FloatLockBtnToggle
-        FloatLockToggleBtn.TextColor3 = FloatLockVisible and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(205, 214, 244)
-    end)
-
-    FloatESPToggleBtn.MouseButton1Click:Connect(function()
-        FloatESPVisible = not FloatESPVisible
-        FloatESPBtn.Visible = FloatESPVisible
-        FloatESPToggleBtn.Text = FloatESPVisible and Lang.FloatESPBtnToggleOn or Lang.FloatESPBtnToggle
-        FloatESPToggleBtn.TextColor3 = FloatESPVisible and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(205, 214, 244)
-    end)
-
-    FloatWallToggleBtn.MouseButton1Click:Connect(function()
-        FloatWallVisible = not FloatWallVisible
-        FloatWallBtn.Visible = FloatWallVisible
-        FloatWallToggleBtn.Text = FloatWallVisible and Lang.FloatWallBtnToggleOn or Lang.FloatWallBtnToggle
-        FloatWallToggleBtn.TextColor3 = FloatWallVisible and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(205, 214, 244)
-    end)
-
-    TargetToggle.MouseButton1Click:Connect(function()
-        LockHead = not LockHead
-        TargetToggle.Text = LockHead and Lang.TargetHead or Lang.TargetBody
-        TargetToggle.TextColor3 = LockHead and Color3.fromRGB(203, 166, 247) or Color3.fromRGB(137, 180, 250)
-    end)
-
-    ModeToggle.MouseButton1Click:Connect(function()
-        InstantLock = not InstantLock
-        ModeToggle.Text = InstantLock and Lang.ModeHard or Lang.ModeSmooth
-        ModeToggle.TextColor3 = InstantLock and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(249, 226, 175)
-    end)
-
-    FOVPlus.MouseButton1Click:Connect(function()
-        FOVRadius = math.min(FOVRadius + 15, 300)
-        FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
-    end)
-
-    FOVMinus.MouseButton1Click:Connect(function()
-        FOVRadius = math.max(FOVRadius - 15, 30)
-        FOVLabel.Text = "FOV: " .. tostring(FOVRadius)
-    end)
-
-    FOVVisToggle.MouseButton1Click:Connect(function()
-        ShowFOV = not ShowFOV
-        FOVCircle.Visible = ShowFOV
-        FOVVisToggle.Text = ShowFOV and Lang.FOVShow or Lang.FOVHide
-        FOVVisToggle.TextColor3 = ShowFOV and Color3.fromRGB(166, 227, 161) or Color3.fromRGB(243, 139, 168)
-    end)
-
-    -- Minimize Panel
-    local minimized = false
-    MinimizeBtn.MouseButton1Click:Connect(function()
-        minimized = not minimized
-        Sidebar.Visible = not minimized
-        ContentArea.Visible = not minimized
-        TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = minimized and UDim2.new(0, 460, 0, 34) or UDim2.new(0, 460, 0, 270)
-        }):Play()
-        MinimizeBtn.Text = minimized and "+" or "-"
-    end)
-
-    -- Cleanup Handler
-    local renderConnection = nil
-    local function Cleanup()
-        if renderConnection then renderConnection:Disconnect() end
-        ClearAllESP()
-        if ScreenGui then ScreenGui:Destroy() end
-    end
-
-    DeleteBtn.MouseButton1Click:Connect(Cleanup)
-    getgenv().AutoLockCleanup = Cleanup
-
-    -- ==================== WALL CHECK & TARGET LOGIC ====================
-    local function IsVisible(targetPart, targetCharacter)
-        if not WallCheckEnabled then return true end
-
-        if not LocalPlayer.Character then return false end
-        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-        local origin = Camera.CFrame.Position
-        local direction = (targetPart.Position - origin)
-        local rayResult = workspace:Raycast(origin, direction, raycastParams)
-        
-        if rayResult then
-            return rayResult.Instance:IsDescendantOf(targetCharacter)
-        end
-        return true
-    end
-
-    local function GetClosestTargetInCenterFOV()
-        local closestTarget = nil
-        local shortestDistance = FOVRadius
-        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                local char = player.Character
-                local humanoid = char:FindFirstChildOfClass("Humanoid")
-
-                if humanoid and humanoid.Health > 0 and char:IsDescendantOf(workspace) then
-                    local targetPart = nil
-                    
-                    if LockHead then
-                        targetPart = char:FindFirstChild("Head")
-                    else
-                        targetPart = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
-                    end
-
-                    if targetPart then
-                        local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                        
-                        if onScreen then
-                            local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                            if distance <= shortestDistance then
-                                if IsVisible(targetPart, char) then
-                                    shortestDistance = distance
-                                    closestTarget = targetPart
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        return closestTarget
-    end
-
-    -- ==================== MAIN RENDER LOOP (LIGHTWEIGHT) ====================
-    renderConnection = RunService.RenderStepped:Connect(function()
-        FOVCircle.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
-
-        -- Hanya memproses AutoLock jika diaktifkan (Sangat Ringan)
-        if AutoLockEnabled then
-            local targetPart = GetClosestTargetInCenterFOV()
-            if targetPart then
-                local currentCF = Camera.CFrame
-                local targetCF = CFrame.new(currentCF.Position, targetPart.Position)
-                
-                if InstantLock then
-                    Camera.CFrame = targetCF
-                else
-                    Camera.CFrame = currentCF:Lerp(targetCF, 0.25)
-                end
-            end
-        end
-    end)
-end
-
--- Button Listeners Menu Bahasa
-BtnID.MouseButton1Click:Connect(function()
-    LoadMainScript("ID")
-end)
-
-BtnEN.MouseButton1Click:Connect(function()
-    LoadMainScript("EN")
-end)
+    FOVLabel.BackgroundTrans
